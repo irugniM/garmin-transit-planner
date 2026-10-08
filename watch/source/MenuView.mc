@@ -24,6 +24,14 @@ class MenuView extends WatchUi.View {
         View.initialize();
     }
 
+    // Back from a trip: leaving it cancels every request (Net.cancel), so
+    // resume the private list (until the Worker answered) and the address
+    // lookups. No-ops while they are in flight or done.
+    function onShow() as Void {
+        Places.fetchPrivate();
+        Places.geoNext();
+    }
+
     function build() as Array {
         var list = [[["To School", "School"], A_TRIP, Places.school()], [["To Home", "Home"], A_TRIP, Places.home()]];
         for (var i = 1; i <= Places.SLOTS; i += 1) {

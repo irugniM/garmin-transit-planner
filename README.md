@@ -257,6 +257,9 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
     `WatchUi.TextPicker`, or a list of preset names) or deletes them.
   - Private list: names from the `PLACES` secret, fetched at app start
     (`POST /v1/places`); trips send the id and the Worker uses its coordinates.
+    Leaving a trip cancels every request (`Communications.cancelAllRequests`),
+    so the menu asks again for the list (until the Worker has answered) and
+    for any address lookup still pending each time it shows.
 - Trip: the top shows `Leave in N min` (from the reply's `leave`), then the alert
   line (if any), the steps, and `next` (`Next bus hh:mm`). UP/DOWN scroll, START refreshes,
   BACK returns to the menu.

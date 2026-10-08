@@ -1,5 +1,6 @@
 import Toybox.Application;
 import Toybox.Application.Storage;
+import Toybox.Communications;
 import Toybox.Lang;
 import Toybox.WatchUi;
 
@@ -27,6 +28,7 @@ module Places {
     var geoFail = {};      // slot -> error text (no reply); retried on demand
     var geoDone = null;    // Method() called after each lookup
     var plBusy = false;
+    var plDone = false;    // private list answered by the Worker this session
 
     function school() as Dictionary {
         return { "k" => "school", "t" => ["To School", "School"], "to" => { "dest" => "school" } };
@@ -142,6 +144,9 @@ module Places {
 
     function onGeo(code as Number, data as Dictionary or String or Null) as Void {
         geoBusy = false;
+        if (code == Communications.REQUEST_CANCELLED) {
+            return;  // not a failure: MenuView.onShow() asks again
+        }
         var i = geoSlot;
         if (code == 200 && data instanceof Dictionary) {
             if (data["ok"] == true && data["lat"] != null && data["lon"] != null) {
@@ -254,8 +259,10 @@ module Places {
         return named(e["n"], "p_" + e["id"] + "_" + e["n"], { "place" => e["id"] });
     }
 
+    // App start, and again whenever the menu shows until the Worker has
+    // answered (a trip closed early cancels every request, this one too).
     function fetchPrivate() as Void {
-        if (plBusy) {
+        if (plBusy || plDone) {
             return;
         }
         plBusy = true;
@@ -264,6 +271,9 @@ module Places {
 
     function onPrivate(code as Number, data as Dictionary or String or Null) as Void {
         plBusy = false;
+        if (code > 0) {
+            plDone = true;  // an HTTP answer; no reply (code < 0) is asked again
+        }
         if (code != 200 || !(data instanceof Dictionary) || data["ok"] != true || !(data["places"] instanceof Array)) {
             return;  // keep the cached list
         }
@@ -279,7 +289,9 @@ module Places {
         changed();
     }
 
-    // Requests cancelled (TripView closed): their callbacks may never come.
+    // Requests cancelled (TripView closed). The callbacks get
+    // REQUEST_CANCELLED, or may never come; MenuView.onShow() then starts the
+    // private list and the lookups again.
     function cancelled() as Void {
         geoBusy = false;
         plBusy = false;
