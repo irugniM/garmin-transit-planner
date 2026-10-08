@@ -48,7 +48,7 @@ export function routeLabel(leg) {
 
 // "13A White Oaks Mall via Westminster Park" -> { variant: "13A", to: "White Oaks Mall" }
 export function splitHeadsign(headsign, route) {
-  let h = String(headsign || '').trim();
+  let h = unparen(headsign); // "London (Downtown)" -> "London Dtwn"
   let variant = route;
   const m = h.match(/^(\d+[A-Z])\s+(.*)$/);
   if (m) {
@@ -137,7 +137,11 @@ export function itineraryItems(it, alerts = null) {
     if (shut && !(sameStop && out.at(-1)?.k === 'closed')) out.push({ k: 'closed', t: shut, n: busNo });
     const { variant, to } = splitHeadsign(leg.headsign, routeLabel(leg));
     const kind = leg.mode === 'BUS' ? 'Bus' : leg.mode[0] + leg.mode.slice(1).toLowerCase();
-    let bus = `${kind} ${variant} ${hhmm(toSecs(leg.startTime))}`;
+    // The departure time always shows: "Coach FlixBus 2702 13:55" is too
+    // long, so "FlixBus 2702 13:55" (or the route cut to fit).
+    const at = hhmm(toSecs(leg.startTime));
+    let bus = `${kind} ${variant} ${at}`;
+    if (bus.length > MAX_LINE) bus = `${cutTo(String(variant), MAX_LINE - at.length - 1)} ${at}`;
     if (leg.realTime && (bus + ' live').length <= MAX_LINE) bus += ' live';
     out.push({ k: 'bus', t: clip(bus), n: busNo });
     if (to) out.push({ k: 'to', t: destLine(to), n: busNo, of: nBus });
@@ -189,26 +193,44 @@ export function closedText(detail) {
   return 'Closed: see alert';
 }
 
-// Stop names as Transitous gives them ("Richmond at University SB - #1513")
-// -> at most 18 chars: "Richmond/Univ SB". Direction only when it fits.
-// null when there's no real name (empty, or just the stop code).
+// Stop names as Transitous gives them -> at most 18 chars, shaped
+// "Main/Cross DIR": "Richmond at University SB - #1513" -> "Richmond/Univ SB",
+// "Richmond between Oxford & Central NB" -> "Richmond/Oxford NB".
+// The direction (NB/SB/EB/WB) is always kept: its room is reserved first.
+// Then: common abbreviations; more abbreviations and dropped street types
+// only when still too long; then letters cut off the main street (6 kept),
+// then off the cross street (4 kept). null when there's no real name (empty,
+// or just the stop code).
 const ABBR = [
   [/\bRoad\b/gi, 'Rd'], [/\bStreet\b/gi, 'St'], [/\bAvenue\b/gi, 'Av'], [/\bDrive\b/gi, 'Dr'],
   [/\bCrescent\b/gi, 'Cr'], [/\bBoulevard\b/gi, 'Blvd'], [/\bCourt\b/gi, 'Ct'], [/\bPlace\b/gi, 'Pl'],
   [/\bParkway\b/gi, 'Pkwy'], [/\bTerrace\b/gi, 'Ter'], [/\bLane\b/gi, 'Ln'], [/\bGate\b/gi, 'Gt'],
   [/\bSquare\b/gi, 'Sq'], [/\bHighway\b/gi, 'Hwy'], [/\bMount\b/gi, 'Mt'], [/\bSaint\b/gi, 'St'],
-  [/\b(north|south|east|west)\s+of\b/gi, (m, d) => `${d[0].toUpperCase()} of`],
 ];
 // Only when the name is still too long.
 const ABBR_MORE = [
-  [/\bUniver?sit?y\b|\bUniverstiy\b/gi, 'Univ'], [/\bHospital\b/gi, 'Hosp'], [/\bCollege\b/gi, 'Coll'],
-  [/\bCent(re|er)\b/gi, 'Ctr'], [/\bTerminal\b/gi, 'Term'], [/\bNorth\b/g, 'N'], [/\bSouth\b/g, 'S'],
-  [/\bEast\b/g, 'E'], [/\bWest\b/g, 'W'], [/\s+([NSEW]) of\s+/g, ' $1/'],
+  [/\bUniver?sit?y\b|\bUniverstiy\b/gi, 'Univ'], [/\bHospital\b/gi, 'Hosp'], [/\bDowntown\b/gi, 'Dtwn'],
+  [/\bCent(re|er)\b/gi, 'Ctr'], [/\bCollege\b/gi, 'Coll'], [/\bTerminal\b/gi, 'Term'], [/\bStation\b/gi, 'Stn'],
+  [/\bMall\b/gi, 'Mall'], [/\bNorth\b/g, 'N'], [/\bSouth\b/g, 'S'], [/\bEast\b/g, 'E'], [/\bWest\b/g, 'W'],
 ];
+const STREET_TYPE = /\s+(St|Rd|Av|Dr|Cr|Blvd|Ct|Pl|Ln|Ter|Pkwy|Gt|Sq)(?=\s+[NSEW]$|$)/g;
+const REL = { north: 'N', south: 'S', east: 'E', west: 'W', n: 'N', s: 'S', e: 'E', w: 'W' };
+
+// "Kitchener (Downtown)" -> "Kitchener Dtwn"; other parentheses just go.
+export function unparen(text) {
+  return String(text || '')
+    .replace(/\(\s*downtown\s*\)/gi, 'Dtwn')
+    .replace(/[()]/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const squash = (x) => String(x || '').replace(/\s+/g, ' ').trim();
+const cutTo = (x, n) => (x.length <= n ? x : x.slice(0, n).replace(/[\s&/-]+$/, ''));
 
 export function stopName(place, max = MAX_LINE) {
   const code = String(place?.stopCode || '').trim();
-  let s = String(place?.name || '').replace(/\s+-\s*#\s*\w+\s*$/, '').replace(/\s+/g, ' ').trim();
+  let s = unparen(String(place?.name || '').replace(/\s+-\s*#\s*\w+\s*$/, ''));
   let dir = '';
   const m = s.match(/\s+([NSEW]B)$/);
   if (m) {
@@ -216,31 +238,53 @@ export function stopName(place, max = MAX_LINE) {
     s = s.slice(0, m.index).trim();
   }
   if (!s || /^#?\d+$/.test(s) || (code && s.replace(/^#\s*/, '') === code)) return null;
-  s = s
-    .replace(/\s+(?:at\s+)?Stop\s*#?\s*(\d+)\b/gi, ' $1') // "Mall at Stop 2" -> "Mall 2"
-    .replace(/\bStop\b/gi, ' ')
-    .replace(/\s+(?:at|&)\s+/gi, '/');
-  for (const [re, to] of ABBR) s = s.replace(re, to);
-  const tidy = (x) => x.replace(/\s*\/\s*/g, '/').replace(/\s+/g, ' ').trim();
-  s = tidy(s);
-  const withDir = (x) => (dir && x.length + 1 + dir.length <= max ? `${x} ${dir}` : x);
-  const over = (x) => x.length + (dir ? dir.length + 1 : 0) > max;
-  if (over(s)) {
-    for (const [re, to] of ABBR_MORE) s = s.replace(re, to);
-    s = tidy(s);
+  s = squash(
+    s
+      .replace(/\s+(?:at\s+)?Stop\s*#?\s*(\d+)\b/gi, ' $1') // "Mall at Stop 2" -> "Mall 2"
+      .replace(/\bStop\b/gi, ' '),
+  );
+  // Main street and first cross street.
+  let main = s;
+  let cross = '';
+  let rel = '';
+  let p;
+  if ((p = s.match(/^(.+?)\s+between\s+(.+?)\s+(?:&|and)\s+.+$/i))) [, main, cross] = p;
+  else if ((p = s.match(/^(.+?)\s+(north|south|east|west|[NSEW])\s+of\s+(.+)$/i))) {
+    [, main, , cross] = p;
+    rel = `${REL[p[2].toLowerCase()]} of`;
+  } else if ((p = s.match(/^(.+?)\s+(?:at|&|near|opposite|opp\.?)\s+(.+)$/i))) [, main, cross] = p;
+  else if ((p = s.match(/^(.+?)\s*\/\s*(.+)$/))) [, main, cross] = p; // "Charles / Water"
+  main = squash(main);
+  cross = squash(cross);
+  for (const [re, to] of ABBR) {
+    main = main.replace(re, to);
+    cross = cross.replace(re, to);
   }
-  // Still long: drop street types before a '/', the end, or a trailing
-  // N/S/E/W ("Dundas St/Highbury Av N" -> "Dundas/Highbury N").
-  if (over(s)) s = tidy(s.replace(/\s+(St|Rd|Av|Dr|Cr|Blvd|Ct|Pl|Ln|Ter|Pkwy|Gt|Sq)(?=\s+[NSEW](?:\/|$)|\/|$)/g, ''));
-  if (s.length <= max) return withDir(s);
-  // Cut at a space or '/' near the limit, then drop a dangling joiner; but
-  // keep a bit of the cross street rather than lose it to a word cut.
-  let cut = -1;
-  for (let i = 1; i <= max; i++) if (s[i] === ' ' || s[i] === '/') cut = i;
-  const slash = s.indexOf('/');
-  if (slash > 0 && cut <= slash && slash + 4 <= max) cut = -1;
-  s = cut > max / 2 ? s.slice(0, cut) : s.slice(0, max);
-  return s.replace(/(\s+(of|and|-)|[\/&-])+$/i, '').trim();
+  const room = max - (dir ? dir.length + 1 : 0);
+  const join = () => (cross ? `${main}/${cross}` : main);
+  const done = (x) => (dir ? `${x} ${dir}` : x);
+  // "Richmond S of Queens" when it fits, else "Richmond/Queens".
+  if (rel && `${main} ${rel} ${cross}`.length <= room) return done(`${main} ${rel} ${cross}`);
+  if (join().length <= room) return done(join());
+  for (const [re, to] of ABBR_MORE) {
+    main = main.replace(re, to);
+    cross = cross.replace(re, to);
+  }
+  if (join().length > room) {
+    main = squash(main.replace(STREET_TYPE, '')) || main;
+    cross = squash(cross.replace(STREET_TYPE, '')) || cross;
+  }
+  if (join().length <= room) return done(join());
+  if (!cross) return done(cutTo(main, room));
+  // Cut the main street (keep 6+ letters), then the cross street (keep 4+).
+  const full = main;
+  const over = join().length - room;
+  main = cutTo(main, Math.max(Math.min(main.length, 6), main.length - over));
+  if (join().length > room) cross = cutTo(cross, Math.max(4, room - main.length - 1));
+  // Give back main-street letters the cross-street cut left room for (or
+  // take more if a cut ended on a space).
+  main = cutTo(full, Math.max(1, room - cross.length - 1));
+  return done(join());
 }
 
 export function xferText(n) {
@@ -267,9 +311,19 @@ function dropRank(x) {
   return Infinity;
 }
 
-// Remove droppable lines (middle first) until fits(lines) is true.
+// Remove droppable lines (middle first) until fits(lines) is true. A line
+// that repeats the one just above it ("London Dtwn" as a headsign and then
+// as the stop) goes first, keeping the stronger of the two kinds.
 export function compactItems(items, fits) {
-  let list = [...items];
+  let list = [];
+  for (const x of items) {
+    const prev = list.at(-1);
+    if (prev && prev.t === x.t) {
+      if (dropRank(x) > dropRank(prev)) list[list.length - 1] = x;
+      continue;
+    }
+    list.push(x);
+  }
   while (!fits(list.map((x) => x.t))) {
     let best = -1;
     for (let i = 0; i < list.length; i++) {

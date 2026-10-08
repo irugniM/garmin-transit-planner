@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { toSecs } from '../src/plan.js';
 import {
-  alertDetail, alertFor, bestWalk, compactAlerts, hereReply, hhmm, itineraryLines, legStops, metres, splitHeadsign,
+  alertDetail, alertFor, bestWalk, compactAlerts, compactItems, hereReply, hhmm, itineraryLines, legStops, metres, splitHeadsign,
   trimPlan, HERE_M, MAX_LINE, MAX_REPLY,
 } from '../src/plan.js';
 
@@ -115,9 +115,9 @@ test('trim: arrive-by picks a late leave that arrives in time; same-stop transfe
   assert.deepEqual(r.lines.filter((l) => l.startsWith('Walk')), ['Walk 1m to #1222', 'Walk 3m']);
   assert.ok(!r.lines.some((l) => l.startsWith('Board')), 'Off #1521 already names the transfer stop');
   // ...and its name line is now the boarding stop's, so it is must-keep.
-  assert.deepEqual(r.lines.slice(6, 9), ['Off #1521 12:16', 'Richmond/Windermer', 'Bus 90 12:19']);
+  assert.deepEqual(r.lines.slice(6, 9), ['Off #1521 12:16', 'Richmo/Winderme SB', 'Bus 90 12:19']);
   const tight = trimPlan(only('natsci_to_whiteoaks_arrive1300', 3), { mode: 'arrive', t: at('2026-10-08T13:00:00-04:00'), maxBytes: 100 });
-  assert.ok(tight.lines.includes('Richmond/Windermer'));
+  assert.ok(tight.lines.includes('Richmo/Winderme SB'));
   assert.ok(!tight.lines.includes('White Oaks Mall 2'), 'the last Off name is droppable');
   assert.equal(r.next, null);
   assert.equal(r.alert, null);
@@ -361,9 +361,9 @@ test('two transfers: every Bus and Off kept, ends with Off, Walk, Arrive', () =>
   checkShape(r);
   assert.equal(r.xfers, 2);
   assert.deepEqual(r.lines, [
-    'Leave 08:06', '2 transfers', 'Walk 1m to #1788', 'Trafalgar/Atkinson', 'Bus 2A 08:07', 'to Natural Science',
+    'Leave 08:06', '2 transfers', 'Walk 1m to #1788', 'Trafal/Atkinson WB', 'Bus 2A 08:07', 'to Natural Science',
     'Off #538 08:23', 'Dundas/Adelaide WB', 'Walk 2m to #28', 'Adelaide/Dundas SB', 'Bus 92 08:25', 'Victoria Hosptial',
-    'Off #2284 08:35', 'Victoria Hosp/Zone', 'Bus 24 08:39', 'to Talbot Village', 'Off #1997 08:56', 'Westmount Mall 1',
+    'Off #2284 08:35', 'Victoria/Zone A EB', 'Bus 24 08:39', 'to Talbot Village', 'Off #1997 08:56', 'Westmount Mall 1',
     'Walk 3m', 'Arrive 08:59',
   ]);
   checkBoarding(r.lines);
@@ -375,13 +375,15 @@ test('two transfers: every Bus and Off kept, ends with Off, Walk, Arrive', () =>
 test('over budget: drops headsigns (middle first), Off stop names, then Leave, never Board/stop name/Bus/Off/last Walk/Arrive', () => {
   const tq = only('argyle_to_westmount_0800', 1);
   const t = T0;
+  const r0 = trimPlan(tq, { t, maxBytes: 440 });
+  assert.deepEqual(r0.lines.filter((l) => /^(to |Victoria Hospt)/.test(l)), ['to Natural Science', 'to Talbot Village']);
   const r1 = trimPlan(tq, { t, maxBytes: 420 });
   assert.deepEqual(r1.lines.filter((l) => /^(to |Victoria Hospt)/.test(l)), ['to Natural Science']);
   assert.ok(r1.lines.includes('Westmount Mall 1'), 'Off names go after the headsigns');
   const r2 = trimPlan(tq, { t, maxBytes: 200 });
   assert.deepEqual(r2.lines, [
-    '2 transfers', 'Walk 1m to #1788', 'Trafalgar/Atkinson', 'Bus 2A 08:07', 'Off #538 08:23', 'Walk 2m to #28', 'Adelaide/Dundas SB',
-    'Bus 92 08:25', 'Off #2284 08:35', 'Victoria Hosp/Zone', 'Bus 24 08:39', 'Off #1997 08:56', 'Walk 3m', 'Arrive 08:59',
+    '2 transfers', 'Walk 1m to #1788', 'Trafal/Atkinson WB', 'Bus 2A 08:07', 'Off #538 08:23', 'Walk 2m to #28', 'Adelaide/Dundas SB',
+    'Bus 92 08:25', 'Off #2284 08:35', 'Victoria/Zone A EB', 'Bus 24 08:39', 'Off #1997 08:56', 'Walk 3m', 'Arrive 08:59',
   ]);
   checkBoarding(r2.lines);
 
@@ -397,8 +399,8 @@ test('over budget: drops headsigns (middle first), Off stop names, then Leave, n
   assert.equal(big.lines.filter((l) => l.startsWith('Bus')).length, 5);
   assert.equal(big.lines[1], '4 transfers');
   // Ends Off (then its stop name, if it fit), Walk, Arrive.
-  const tail = big.lines.slice(-4).map((l) => l.split(' ')[0]);
-  assert.ok(['Off,Walk,Arrive', 'Off,Victoria,Walk,Arrive'].includes(tail.slice(tail.indexOf('Off')).join()), JSON.stringify(big.lines));
+  assert.deepEqual(big.lines.slice(-2).map((l) => l.split(' ')[0]), ['Walk', 'Arrive']);
+  assert.ok(/^Off /.test(big.lines.at(-3)) || /^Off /.test(big.lines.at(-4)), JSON.stringify(big.lines));
   assert.ok(Buffer.byteLength(JSON.stringify(big)) <= MAX_REPLY);
 });
 
@@ -610,30 +612,71 @@ test('choice: a long first walk does not beat a normal trip that is as fast with
 
 // ---- stop names under the boarding / Off lines -----------------------------
 
-test('stopName: abbreviations, direction only if it fits, clip, no name', async () => {
+test('stopName: "Main/Cross DIR", direction always kept, abbreviations, letter cuts, no name', async () => {
   const { stopName } = await import('../src/plan.js');
   const n = (name, code = '1') => stopName({ name, stopCode: code });
+  // "between A & B": the first cross street.
+  assert.equal(n('Richmond between Oxford & Central NB'), 'Richmond/Oxford NB');
+  assert.equal(n('Western between Sarnia & Lambton SB'), 'Western/Sarnia SB');
+  // Too long: cut the main street (6+ letters kept), then the cross street;
+  // the direction always stays.
+  assert.equal(n('Commissioners between Wellington & Adelaide EB'), 'Commis/Wellingt EB');
+  assert.equal(n('Highbury between Commissioners Road & Hamilton Road SB'), 'Highbu/Commissi SB');
+  // at, &, near, opposite, "N of".
   assert.equal(n('Sarnia at Western  WB - #1647', '1647'), 'Sarnia/Western WB');
+  assert.equal(n('Trafalgar at Atkinson WB - #1788', '1788'), 'Trafal/Atkinson WB');
+  assert.equal(n('Victoria Hospital & Zone A EB - #2284', '2284'), 'Victoria/Zone A EB');
+  assert.equal(n('Adelaide opposite Central NB'), 'Adelaid/Central NB');
+  assert.equal(n('Wharncliffe near Commissioners SB'), 'Wharnc/Commissi SB');
+  assert.equal(n('Richmond south of Queens SB - #2742', '2742'), 'Richmond/Queens SB');
+  assert.equal(n('Clarke north of Dundas'), 'Clarke N of Dundas'); // "N of" kept when it fits
+  assert.equal(n('Western North of Phillip Aziz  NB - #2291', '2291'), 'Western/Phillip NB');
+  // Abbreviations first, before any letter cuts.
   assert.equal(n('Richmond at University SB - #1513', '1513'), 'Richmond/Univ SB');
+  assert.equal(n('Western at Sarnia Rd SB - #2003', '2003'), 'Western/Sarnia SB');
+  assert.equal(n('Dundas Street at Highbury Avenue North WB'), 'Dundas/Highbury WB');
+  assert.equal(n('Universtiy Hospital SB - #1817', '1817'), 'Univ Hosp SB');
   assert.equal(n('Masonville Place Stop #3 - #1142', '1142'), 'Masonville Pl 3');
   assert.equal(n('White Oaks Mall Stop 2 - #2061', '2061'), 'White Oaks Mall 2');
   assert.equal(n('Westmount Mall at Stop 1 - #1997', '1997'), 'Westmount Mall 1');
   assert.equal(n('Natural Science - #1222', '1222'), 'Natural Science');
-  assert.equal(n('Western at Sarnia Rd SB - #2003', '2003'), 'Western/Sarnia SB');
-  assert.equal(n('Richmond south of Queens SB - #2742', '2742'), 'Richmond S/Queens');
-  assert.equal(n('Dundas Street at Highbury Avenue North WB'), 'Dundas/Highbury N');
-  assert.equal(n('Victoria Hospital & Zone A EB - #2284', '2284'), 'Victoria Hosp/Zone');
-  // Keeps some of the cross street rather than cutting at the '/'.
-  assert.equal(n('Oxford Street West at Wharncliffe Road North EB'), 'Oxford W/Wharnclif');
+  // Out of town: parentheses stripped, Downtown -> Dtwn.
+  assert.equal(n('Kitchener (Downtown)'), 'Kitchener Dtwn');
+  assert.equal(n('Charles / Water'), 'Charles/Water');
+  assert.equal(n('London (Downtown) Stop 2'), 'London Dtwn 2');
   // No real name: no line.
   for (const x of ['', '   ', '#1513 - #1513', '1513', '#1513']) assert.equal(n(x, '1513'), null, x);
   assert.equal(stopName({ stopCode: '1513' }), null);
   assert.equal(stopName(null), null);
-  for (const x of ['Fanshawe Park Road West at Hyde Park Road NB', 'Western North of Phillip Aziz  NB - #2291',
-    'University Hospital Main Entrance Loop Stop 4 EB', 'A'.repeat(40) + ' WB']) {
+  // Anything with a direction and a cross street keeps both, within 18.
+  for (const x of ['Fanshawe Park Road between Richmond Street & Masonville Place WB', 'Fanshawe Park Road West at Hyde Park Road NB',
+    'Oxford Street West at Wharncliffe Road North EB', 'Abcdefghijklmnopqrstuvwxyz between Abcdefghijklmnop & X EB']) {
+    const v = n(x);
+    assert.ok(v.length <= MAX_LINE, `${x} -> ${v}`);
+    assert.match(v, /^\S.{4,}\/\S{4,}.* [NSEW]B$/, `${x} -> ${v}`);
+  }
+  for (const x of ['University Hospital Main Entrance Loop Stop 4 EB', 'A'.repeat(40) + ' WB', 'A'.repeat(40)]) {
     const v = n(x);
     assert.ok(v && v.length <= MAX_LINE && !/[\/&-]$/.test(v), `${x} -> ${v}`);
+    if (/B$/.test(x)) assert.match(v, / [NSEW]B$/);
   }
+});
+
+test('headsigns: parentheses stripped, Downtown -> Dtwn; a line repeating the one above is dropped', () => {
+  // Long route names (intercity coaches) keep the departure time.
+  const coach = structuredClone(fx('masonville_to_school_0800').itineraries[1]);
+  Object.assign(coach.legs[1], { mode: 'COACH', routeShortName: 'FlixBus 2702' });
+  assert.equal(itineraryLines(coach).find((l) => /08:14/.test(l)), 'FlixBus 2702 08:14');
+  coach.legs[1].routeShortName = 'Some Very Long Coach Line 12';
+  assert.equal(itineraryLines(coach).find((l) => /08:14/.test(l)), 'Some Very Lo 08:14');
+  assert.deepEqual(splitHeadsign('Kitchener (Downtown)', '1'), { variant: '1', to: 'Kitchener Dtwn' });
+  const items = [
+    { k: 'bus', t: 'Bus 1 09:00' }, { k: 'to', t: 'London Dtwn', n: 0, of: 1 }, { k: 'name', t: 'London Dtwn' },
+    { k: 'off', t: 'Off #9 10:30' }, { k: 'offname', t: 'Kitchener Dtwn' }, { k: 'offname', t: 'Kitchener Dtwn' }, { k: 'arrive', t: 'Arrive 10:35' },
+  ];
+  assert.deepEqual(compactItems(items, () => true), ['Bus 1 09:00', 'London Dtwn', 'Off #9 10:30', 'Kitchener Dtwn', 'Arrive 10:35']);
+  // The kept copy is the must-keep one.
+  assert.deepEqual(compactItems(items, (l) => l.length <= 4), ['Bus 1 09:00', 'London Dtwn', 'Off #9 10:30', 'Arrive 10:35']);
 });
 
 test('stop names: under every boarding line, closure note after the name, empty names skipped', () => {

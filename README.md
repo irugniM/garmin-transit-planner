@@ -67,13 +67,19 @@ Reply (times are America/Toronto, lines are at most 18 characters):
   or `Board at #1143` when there is no walk), except a transfer at the same stop
   the previous bus left you at (its `Off #1234` line names it). Every bus has its
   `Off` line, and a trip ends with the final walk and `Arrive`.
-- Under each boarding line is the stop's name from Transitous, shortened to
-  18 characters (`at`/`&` -> `/`, Road -> Rd, Street -> St, `Stop 3` -> `3`,
-  `north of` -> `N of`, more abbreviations and dropped street types only when
-  still too long, then a cut at a space or `/`), with the direction (`WB`) when
-  it fits: `Sarnia/Western WB`, `Richmond/Univ SB`, `Masonville Pl 3`. No line
-  when the name is empty or just the stop code. `Off #X` gets the same name
-  line, but it is droppable (unless the next bus leaves from that stop).
+- Under each boarding line is the stop's name from Transitous as
+  `Main/Cross DIR`, at most 18 characters: `X between A & B`, `X at A`,
+  `X & A`, `X near A`, `X opposite A` -> `X/A` (`X N of A` stays when it fits).
+  The direction (NB/SB/EB/WB) is always kept. If too long: Road -> Rd,
+  Street -> St, ..., then University -> Univ, Hospital -> Hosp,
+  Downtown -> Dtwn, Centre -> Ctr, then street types dropped, then letters cut
+  off the main street (6 kept), then off the cross street (4 kept).
+  Parentheses go (`Kitchener (Downtown)` -> `Kitchener Dtwn`, in headsigns
+  too). Examples: `Sarnia/Western WB`, `Richmond/Oxford NB`,
+  `Commis/Wellingt EB`, `Masonville Pl 3`. No line when the name is empty or
+  just the stop code. `Off #X` gets the same name line, but it is droppable
+  (unless the next bus leaves from that stop). A line that repeats the one
+  just above it is shown once.
 - There is no line limit; if a reply would pass 600 bytes, the walk line, the
   single-bus alternative, headsign lines (middle legs first), Off stop names,
   then `Leave` are dropped, never the transfer count, Board and its stop name,
