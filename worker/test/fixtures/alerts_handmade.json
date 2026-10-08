@@ -1,0 +1,289 @@
+{
+ "header": {
+  "gtfs_realtime_version": "2.0",
+  "incrementality": 0,
+  "timestamp": 1791433638
+ },
+ "entity": [
+  {
+   "id": "1",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "27",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "SARNWES2",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 9,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "The following stops will be closed until further notice:\r\nSarnia at Western WB \r\n\r\nAlternative stop(s) for Route 27 can be found at:\r\nSarnia west of Western WB (Temp Stop approx. 130m west of Stop)\r\n",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "2",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "93",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "WESTSAR2",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 1,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Western at Sarnia Rd SB will be closed until further notice. Alternative stop(s) for Route 93 can be found at Althouse College\r\n",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "3",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "90",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "RICHWIN2",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 1,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Richmond at Windermere SB will be closed until further notice.",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "4",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "27",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "UNIVRIC1",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 4,
+    "header_text": {
+     "translation": [
+      {
+       "text": "DETOUR",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Route 27 is on detour. Alternate stops can be found at:\r\nRichmond at University (Temp Stop) - 2nd pole South of stop\r\n",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "5",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1700000000,
+      "end": 1700003600
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "13",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "DELAHAL2",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 1,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Expired closure",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "6",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "10",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "MASOSTO4",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 9,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Only route 10 is affected; 50m east temp stop.",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "7",
+   "is_deleted": true,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "NATSCI",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 1,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Deleted alert",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

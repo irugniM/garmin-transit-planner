@@ -1,0 +1,16 @@
+{
+  "name": "ltctrip-worker",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "scripts": {
+    "test": "node --test test/",
+    "dev": "wrangler dev --local",
+    "deploy": "wrangler deploy",
+    "fixtures": "node scripts/capture-fixtures.mjs"
+  },
+  "devDependencies": {
+    "wrangler": "4.86.0"
+  }
+}

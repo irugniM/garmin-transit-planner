@@ -1,0 +1,7 @@
+project.manifest = manifest.xml
+
+base.sourcePath = source
+# Later paths override earlier ones. resources-secret/ is git-ignored and may
+# be missing (fresh clone); then the placeholders in resources-secret-example/
+# are used. See ../README.md.
+base.resourcePath = resources;resources-secret-example;resources-secret

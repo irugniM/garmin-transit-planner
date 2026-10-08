@@ -1,0 +1,854 @@
+{
+ "requestParameters": {},
+ "from": {
+  "name": "START",
+  "lat": 43.02566,
+  "lon": -81.2815,
+  "level": 0,
+  "vertexType": "NORMAL"
+ },
+ "to": {
+  "name": "END",
+  "lat": 43.00129,
+  "lon": -81.27883,
+  "level": 0,
+  "vertexType": "NORMAL"
+ },
+ "direct": [],
+ "itineraries": [
+  {
+   "duration": 1500,
+   "startTime": "2026-10-08T12:01:00Z",
+   "endTime": "2026-10-08T12:26:00Z",
+   "transfers": 1,
+   "id": "ClchXmiu00iDRUApvHSTGARSVMAyHWNhLW9uLUxvbmRvbi1UcmFuc2l0X01BU09TVE80Od1CVyJQg0VAQYEO8+UFUlTASPyLntYGULiMntYGWgRXQUxLYAEKpgEKAjEzEisyMDI2MTAwOF8wODowMl9jYS1vbi1Mb25kb24tVHJhbnNpdF8yMzUwODk3Gh1jYS1vbi1Mb25kb24tVHJhbnNpdF9NQVNPU1RPNCHdQlciUINFQCmBDvPlBVJUwDIdY2Etb24tTG9uZG9uLVRyYW5zaXRfREVMQUhBTDI5ZeWXwRiBRUBBN3Fyv0NRVMBIuIye1gZQ1JCe1gZaA0JVU2ABCnYaHWNhLW9uLUxvbmRvbi1UcmFuc2l0X0RFTEFIQUwyIWXll8EYgUVAKTdxcr9DUVTAMh1jYS1vbi1Mb25kb24tVHJhbnNpdF9NSUREUEVSVDlqhel7DYFFQEEShCugUFFUwEjUkJ7WBlDMkZ7WBloEV0FMS2ABCqYBCgIyNxIrMjAyNjEwMDhfMDc6NDlfY2Etb24tTG9uZG9uLVRyYW5zaXRfMjM1MzU2MxodY2Etb24tTG9uZG9uLVRyYW5zaXRfTUlERFBFUlQhaoXpew2BRUApEoQroFBRVMAyHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1NBUk5XRVMyOYfEPZY+gEVAQbahYpy/UVTASMSSntYGUKSWntYGWgNCVVNgAQpXGh1jYS1vbi1Mb25kb24tVHJhbnNpdF9TQVJOV0VTMiGHxD2WPoBFQCm2oWKcv1FUwDnq501FKoBFQEEyychZ2FFUwEiklp7WBlDYl57WBloEV0FMS2AB",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 43.02566,
+      "lon": -81.2815,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:01:00Z",
+      "scheduledDeparture": "2026-10-08T12:01:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Masonville Place Stop #4 - #1143",
+      "stopId": "ca-on-London-Transit_MASOSTO4",
+      "importance": 0.000005726423296437133,
+      "lat": 43.025883,
+      "lon": -81.28161000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:02:00Z",
+      "scheduledArrival": "2026-10-08T12:02:00Z",
+      "stopCode": "1143",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 60,
+     "startTime": "2026-10-08T12:01:00Z",
+     "endTime": "2026-10-08T12:02:00Z",
+     "scheduledStartTime": "2026-10-08T12:01:00Z",
+     "scheduledEndTime": "2026-10-08T12:02:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 59
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Masonville Place Stop #4 - #1143",
+      "stopId": "ca-on-London-Transit_MASOSTO4",
+      "importance": 0.000005726423296437133,
+      "lat": 43.025883,
+      "lon": -81.28161000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:02:00Z",
+      "scheduledDeparture": "2026-10-08T12:02:00Z",
+      "stopCode": "1143",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Delaware Hall SB - #509",
+      "stopId": "ca-on-London-Transit_DELAHAL2",
+      "importance": 0.0000026464224447408924,
+      "lat": 43.008568000000004,
+      "lon": -81.26976,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:11:00Z",
+      "scheduledArrival": "2026-10-08T12:11:00Z",
+      "stopCode": "509",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 540,
+     "startTime": "2026-10-08T12:02:00Z",
+     "endTime": "2026-10-08T12:11:00Z",
+     "scheduledStartTime": "2026-10-08T12:02:00Z",
+     "scheduledEndTime": "2026-10-08T12:11:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "13A White Oaks Mall via Westminster Park",
+     "tripFrom": {
+      "name": "Masonville Place Stop #4 - #1143",
+      "stopId": "ca-on-London-Transit_MASOSTO4",
+      "importance": 0.000005726423296437133,
+      "lat": 43.025883,
+      "lon": -81.28161000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:02:00Z",
+      "scheduledDeparture": "2026-10-08T12:02:00Z",
+      "stopCode": "1143",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:58:00Z",
+      "scheduledArrival": "2026-10-08T12:58:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "ca-on-London-Transit_13",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeColor": "929ebc",
+     "routeTextColor": "000000",
+     "routeType": 3,
+     "agencyName": "London Transit",
+     "agencyUrl": "http://www.londontransit.ca",
+     "agencyFareUrl": "http://www.londontransit.ca/fares-and-passes/fares/",
+     "agencyId": "LTC - 2026 September Schedules",
+     "tripId": "20261008_08:02_ca-on-London-Transit_2350897",
+     "routeShortName": "13",
+     "routeLongName": "Route 13",
+     "tripShortName": "",
+     "displayName": "13",
+     "cancelled": false,
+     "source": "ca-on_London-Transit.gtfs.zip/stop_times.txt:78782:78848",
+     "bikesAllowed": false,
+     "wheelchairAccessible": "ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Delaware Hall SB - #509",
+      "stopId": "ca-on-London-Transit_DELAHAL2",
+      "importance": 0.0000026464224447408924,
+      "lat": 43.008568000000004,
+      "lon": -81.26976,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:11:00Z",
+      "departure": "2026-10-08T12:11:00Z",
+      "scheduledArrival": "2026-10-08T12:11:00Z",
+      "scheduledDeparture": "2026-10-08T12:11:00Z",
+      "stopCode": "509",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Talbot College - #1173",
+      "stopId": "ca-on-London-Transit_MIDDPERT",
+      "importance": 0.000004125518898945302,
+      "lat": 43.008224,
+      "lon": -81.270546,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:13:00Z",
+      "scheduledArrival": "2026-10-08T12:13:00Z",
+      "stopCode": "1173",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 120,
+     "startTime": "2026-10-08T12:11:00Z",
+     "endTime": "2026-10-08T12:13:00Z",
+     "scheduledStartTime": "2026-10-08T12:11:00Z",
+     "scheduledEndTime": "2026-10-08T12:13:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 125
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Talbot College - #1173",
+      "stopId": "ca-on-London-Transit_MIDDPERT",
+      "importance": 0.000004125518898945302,
+      "lat": 43.008224,
+      "lon": -81.270546,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:15:00Z",
+      "scheduledDeparture": "2026-10-08T12:15:00Z",
+      "stopCode": "1173",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Sarnia at Western  WB - #1647",
+      "stopId": "ca-on-London-Transit_SARNWES2",
+      "importance": 0.000002208493924626964,
+      "lat": 43.00191,
+      "lon": -81.27732,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:23:00Z",
+      "scheduledArrival": "2026-10-08T12:23:00Z",
+      "stopCode": "1647",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "alerts": [
+       {
+        "communicationPeriod": [
+         {
+          "start": "2026-10-05T09:00:00Z",
+          "end": "3000-01-01T05:00:00Z"
+         }
+        ],
+        "impactPeriod": [
+         {
+          "start": "2026-10-05T09:00:00Z",
+          "end": "3000-01-01T05:00:00Z"
+         }
+        ],
+        "cause": "CONSTRUCTION",
+        "causeDetail": "Construction",
+        "effect": "STOP_MOVED",
+        "effectDetail": "Stop Moved",
+        "headerText": "STOP CLOSURE",
+        "descriptionText": "The following stops will be closed until further notice:\r\nSarnia at Western  WB  \r\n\r\nAlternative stop(s) for Route 27 can be found at:\r\nSarnia west of Western WB (Temp Stop approx. 130m west of Stop)\r\n\r\n",
+        "ttsHeaderText": "STOP CLOSURE",
+        "ttsDescriptionText": "Stop Closure on Route 27 WESTBOUND at ---"
+       }
+      ],
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 480,
+     "startTime": "2026-10-08T12:15:00Z",
+     "endTime": "2026-10-08T12:23:00Z",
+     "scheduledStartTime": "2026-10-08T12:15:00Z",
+     "scheduledEndTime": "2026-10-08T12:23:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "Capulet Lane via Western University",
+     "tripFrom": {
+      "name": "Fanshawe College Station - #2914",
+      "stopId": "ca-on-London-Transit_FANSCOLL",
+      "importance": 0.0000017038610167219304,
+      "lat": 43.012100000000004,
+      "lon": -81.19760000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T11:49:00Z",
+      "scheduledDeparture": "2026-10-08T11:49:00Z",
+      "stopCode": "2914",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "Capulet Lane at Oxford SB - #2390",
+      "stopId": "ca-on-London-Transit_CAPUOXFO",
+      "importance": 0.0000014239927850212553,
+      "lat": 42.98373,
+      "lon": -81.29660000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:31:00Z",
+      "scheduledArrival": "2026-10-08T12:31:00Z",
+      "stopCode": "2390",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "ca-on-London-Transit_27",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeColor": "9e91a1",
+     "routeTextColor": "000000",
+     "routeType": 3,
+     "agencyName": "London Transit",
+     "agencyUrl": "http://www.londontransit.ca",
+     "agencyFareUrl": "http://www.londontransit.ca/fares-and-passes/fares/",
+     "agencyId": "LTC - 2026 September Schedules",
+     "tripId": "20261008_07:49_ca-on-London-Transit_2353563",
+     "routeShortName": "27",
+     "routeLongName": "Route 27",
+     "tripShortName": "",
+     "displayName": "27",
+     "cancelled": false,
+     "source": "ca-on_London-Transit.gtfs.zip/stop_times.txt:242707:242744",
+     "bikesAllowed": false,
+     "wheelchairAccessible": "ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Sarnia at Western  WB - #1647",
+      "stopId": "ca-on-London-Transit_SARNWES2",
+      "importance": 0.000002208493924626964,
+      "lat": 43.00191,
+      "lon": -81.27732,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:23:00Z",
+      "departure": "2026-10-08T12:23:00Z",
+      "scheduledArrival": "2026-10-08T12:23:00Z",
+      "scheduledDeparture": "2026-10-08T12:23:00Z",
+      "stopCode": "1647",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "alerts": [
+       {
+        "communicationPeriod": [
+         {
+          "start": "2026-10-05T09:00:00Z",
+          "end": "3000-01-01T05:00:00Z"
+         }
+        ],
+        "impactPeriod": [
+         {
+          "start": "2026-10-05T09:00:00Z",
+          "end": "3000-01-01T05:00:00Z"
+         }
+        ],
+        "cause": "CONSTRUCTION",
+        "causeDetail": "Construction",
+        "effect": "STOP_MOVED",
+        "effectDetail": "Stop Moved",
+        "headerText": "STOP CLOSURE",
+        "descriptionText": "The following stops will be closed until further notice:\r\nSarnia at Western  WB  \r\n\r\nAlternative stop(s) for Route 27 can be found at:\r\nSarnia west of Western WB (Temp Stop approx. 130m west of Stop)\r\n\r\n",
+        "ttsHeaderText": "STOP CLOSURE",
+        "ttsDescriptionText": "Stop Closure on Route 27 WESTBOUND at ---"
+       }
+      ],
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 43.00129,
+      "lon": -81.27883,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:26:00Z",
+      "scheduledArrival": "2026-10-08T12:26:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 180,
+     "startTime": "2026-10-08T12:23:00Z",
+     "endTime": "2026-10-08T12:26:00Z",
+     "scheduledStartTime": "2026-10-08T12:23:00Z",
+     "scheduledEndTime": "2026-10-08T12:26:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 158
+    }
+   ]
+  },
+  {
+   "duration": 1020,
+   "startTime": "2026-10-08T12:10:00Z",
+   "endTime": "2026-10-08T12:27:00Z",
+   "transfers": 0,
+   "id": "ClchXmiu00iDRUApvHSTGARSVMAyHWNhLW9uLUxvbmRvbi1UcmFuc2l0X01BU09TVE8zOSUjZ2FPg0VAQfbWwFYJUlTASJiQntYGUIiSntYGWgRXQUxLYAEKpgEKAjkzEisyMDI2MTAwOF8wODoxNF9jYS1vbi1Mb25kb24tVHJhbnNpdF8yMzU1NDMxGh1jYS1vbi1Mb25kb24tVHJhbnNpdF9NQVNPU1RPMyElI2dhT4NFQCn21sBWCVJUwDIdY2Etb24tTG9uZG9uLVRyYW5zaXRfV0VTVFNBUjI5yHn/HyeARUBBOZfiqrJRVMBIiJKe1gZQpJae1gZaA0JVU2ABClcaHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1dFU1RTQVIyIch5/x8ngEVAKTmX4qqyUVTAOernTUUqgEVAQTLJyFnYUVTASKSWntYGUJSYntYGWgRXQUxLYAE=",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 43.02566,
+      "lon": -81.2815,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:10:00Z",
+      "scheduledDeparture": "2026-10-08T12:10:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Masonville Place Stop #3 - #1142",
+      "stopId": "ca-on-London-Transit_MASOSTO3",
+      "importance": 0.000005726423296437133,
+      "lat": 43.02586,
+      "lon": -81.28182000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:14:00Z",
+      "scheduledArrival": "2026-10-08T12:14:00Z",
+      "stopCode": "1142",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 240,
+     "startTime": "2026-10-08T12:10:00Z",
+     "endTime": "2026-10-08T12:14:00Z",
+     "scheduledStartTime": "2026-10-08T12:10:00Z",
+     "scheduledEndTime": "2026-10-08T12:14:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 254
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Masonville Place Stop #3 - #1142",
+      "stopId": "ca-on-London-Transit_MASOSTO3",
+      "importance": 0.000005726423296437133,
+      "lat": 43.02586,
+      "lon": -81.28182000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:14:00Z",
+      "scheduledDeparture": "2026-10-08T12:14:00Z",
+      "stopCode": "1142",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Western at Sarnia Rd SB - #2003",
+      "stopId": "ca-on-London-Transit_WESTSAR2",
+      "importance": 0.000003000245442308369,
+      "lat": 43.001194,
+      "lon": -81.27653,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:23:00Z",
+      "scheduledArrival": "2026-10-08T12:23:00Z",
+      "stopCode": "2003",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "alerts": [
+       {
+        "communicationPeriod": [
+         {
+          "start": "2026-10-07T12:30:00Z",
+          "end": "3000-01-01T05:00:00Z"
+         }
+        ],
+        "impactPeriod": [
+         {
+          "start": "2026-10-07T12:30:00Z",
+          "end": "3000-01-01T05:00:00Z"
+         }
+        ],
+        "cause": "UNKNOWN_CAUSE",
+        "causeDetail": "Unknown Cause",
+        "effect": "NO_SERVICE",
+        "effectDetail": "No Service",
+        "headerText": "STOP CLOSURE",
+        "descriptionText": "Western at Sarnia Rd SB will be closed until further notice.  Alternative stop(s) for Route 93 can be found at Althouse College\r\n\r\n",
+        "ttsHeaderText": "STOP CLOSURE",
+        "ttsDescriptionText": "Stop Closure on Route 93 SOUTHBOUND at ---"
+       }
+      ],
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 540,
+     "startTime": "2026-10-08T12:14:00Z",
+     "endTime": "2026-10-08T12:23:00Z",
+     "scheduledStartTime": "2026-10-08T12:14:00Z",
+     "scheduledEndTime": "2026-10-08T12:23:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "White Oaks Mall via Western/Wharncliffe",
+     "tripFrom": {
+      "name": "Masonville Place Stop #3 - #1142",
+      "stopId": "ca-on-London-Transit_MASOSTO3",
+      "importance": 0.000005726423296437133,
+      "lat": 43.02586,
+      "lon": -81.28182000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:14:00Z",
+      "scheduledDeparture": "2026-10-08T12:14:00Z",
+      "stopCode": "1142",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "Jalna at White Oaks Mall SB - #2296",
+      "stopId": "ca-on-London-Transit_WHOKMASB",
+      "importance": 0.000002191092789871618,
+      "lat": 42.931103,
+      "lon": -81.2274,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:57:00Z",
+      "scheduledArrival": "2026-10-08T12:57:00Z",
+      "stopCode": "2296",
+      "vertexType": "TRANSIT",
+      "pickupType": "NOT_ALLOWED",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "ca-on-London-Transit_93",
+     "routeUrl": "",
+     "directionId": "1",
+     "routeColor": "f89d53",
+     "routeTextColor": "000000",
+     "routeType": 3,
+     "agencyName": "London Transit",
+     "agencyUrl": "http://www.londontransit.ca",
+     "agencyFareUrl": "http://www.londontransit.ca/fares-and-passes/fares/",
+     "agencyId": "LTC - 2026 September Schedules",
+     "tripId": "20261008_08:14_ca-on-London-Transit_2355431",
+     "routeShortName": "93",
+     "routeLongName": "Route 93",
+     "tripShortName": "",
+     "displayName": "93",
+     "cancelled": false,
+     "source": "ca-on_London-Transit.gtfs.zip/stop_times.txt:363834:363865",
+     "bikesAllowed": false,
+     "wheelchairAccessible": "ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Western at Sarnia Rd SB - #2003",
+      "stopId": "ca-on-London-Transit_WESTSAR2",
+      "importance": 0.000003000245442308369,
+      "lat": 43.001194,
+      "lon": -81.27653,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:23:00Z",
+      "departure": "2026-10-08T12:23:00Z",
+      "scheduledArrival": "2026-10-08T12:23:00Z",
+      "scheduledDeparture": "2026-10-08T12:23:00Z",
+      "stopCode": "2003",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "alerts": [
+       {
+        "communicationPeriod": [
+         {
+          "start": "2026-10-07T12:30:00Z",
+          "end": "3000-01-01T05:00:00Z"
+         }
+        ],
+        "impactPeriod": [
+         {
+          "start": "2026-10-07T12:30:00Z",
+          "end": "3000-01-01T05:00:00Z"
+         }
+        ],
+        "cause": "UNKNOWN_CAUSE",
+        "causeDetail": "Unknown Cause",
+        "effect": "NO_SERVICE",
+        "effectDetail": "No Service",
+        "headerText": "STOP CLOSURE",
+        "descriptionText": "Western at Sarnia Rd SB will be closed until further notice.  Alternative stop(s) for Route 93 can be found at Althouse College\r\n\r\n",
+        "ttsHeaderText": "STOP CLOSURE",
+        "ttsDescriptionText": "Stop Closure on Route 93 SOUTHBOUND at ---"
+       }
+      ],
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 43.00129,
+      "lon": -81.27883,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:27:00Z",
+      "scheduledArrival": "2026-10-08T12:27:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 240,
+     "startTime": "2026-10-08T12:23:00Z",
+     "endTime": "2026-10-08T12:27:00Z",
+     "scheduledStartTime": "2026-10-08T12:23:00Z",
+     "scheduledEndTime": "2026-10-08T12:27:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 257
+    }
+   ]
+  },
+  {
+   "duration": 1800,
+   "startTime": "2026-10-08T12:15:00Z",
+   "endTime": "2026-10-08T12:45:00Z",
+   "transfers": 0,
+   "id": "ClchXmiu00iDRUApvHSTGARSVMAyHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1dFU1RBTUIyOYoCfSJPgkVAQa6ZfLPNUVTASMSSntYGUMiZntYGWgRXQUxLYAEKpgEKAjM0EisyMDI2MTAwOF8wODoxNF9jYS1vbi1Mb25kb24tVHJhbnNpdF8yMzU0MzY1Gh1jYS1vbi1Mb25kb24tVHJhbnNpdF9XRVNUQU1CMiGKAn0iT4JFQCmumXyzzVFUwDIdY2Etb24tTG9uZG9uLVRyYW5zaXRfQUxVTUhBTDE5gzP4+8WARUBBLxfxnZhRVMBIyJme1gZQuJue1gZaA0JVU2ABClcaHWNhLW9uLUxvbmRvbi1UcmFuc2l0X0FMVU1IQUwxIYMz+PvFgEVAKS8X8Z2YUVTAOernTUUqgEVAQTLJyFnYUVTASLibntYGUMygntYGWgRXQUxLYAE=",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 43.02566,
+      "lon": -81.2815,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:15:00Z",
+      "scheduledDeparture": "2026-10-08T12:15:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Western at Ambleside Dr SB - #1984",
+      "stopId": "ca-on-London-Transit_WESTAMB2",
+      "importance": 2.6971756028615346e-7,
+      "lat": 43.01804,
+      "lon": -81.27817999999999,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:30:00Z",
+      "scheduledArrival": "2026-10-08T12:30:00Z",
+      "stopCode": "1984",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 900,
+     "startTime": "2026-10-08T12:15:00Z",
+     "endTime": "2026-10-08T12:30:00Z",
+     "scheduledStartTime": "2026-10-08T12:15:00Z",
+     "scheduledEndTime": "2026-10-08T12:30:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 989
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Western at Ambleside Dr SB - #1984",
+      "stopId": "ca-on-London-Transit_WESTAMB2",
+      "importance": 2.6971756028615346e-7,
+      "lat": 43.01804,
+      "lon": -81.27817999999999,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:30:00Z",
+      "scheduledDeparture": "2026-10-08T12:30:00Z",
+      "stopCode": "1984",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Alumni Hall EB - #141",
+      "stopId": "ca-on-London-Transit_ALUMHAL1",
+      "importance": 0.000004176271886535687,
+      "lat": 43.006042,
+      "lon": -81.27494,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:34:00Z",
+      "scheduledArrival": "2026-10-08T12:34:00Z",
+      "stopCode": "141",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 240,
+     "startTime": "2026-10-08T12:30:00Z",
+     "endTime": "2026-10-08T12:34:00Z",
+     "scheduledStartTime": "2026-10-08T12:30:00Z",
+     "scheduledEndTime": "2026-10-08T12:34:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "Masonville via Alumni Hall",
+     "tripFrom": {
+      "name": "Masonville Place Stop #1 - #1140",
+      "stopId": "ca-on-London-Transit_MASOSTO1",
+      "importance": 0.000005726423296437133,
+      "lat": 43.025448000000004,
+      "lon": -81.28159000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T12:14:00Z",
+      "scheduledDeparture": "2026-10-08T12:14:00Z",
+      "stopCode": "1140",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "Masonville Place Stop #2 - #1141",
+      "stopId": "ca-on-London-Transit_MASOSTO2",
+      "importance": 0.000005726423296437133,
+      "lat": 43.025665000000004,
+      "lon": -81.28172,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T13:10:00Z",
+      "scheduledArrival": "2026-10-08T13:10:00Z",
+      "stopCode": "1141",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "ca-on-London-Transit_34",
+     "routeUrl": "",
+     "directionId": "1",
+     "routeColor": "cb9e9e",
+     "routeTextColor": "000000",
+     "routeType": 3,
+     "agencyName": "London Transit",
+     "agencyUrl": "http://www.londontransit.ca",
+     "agencyFareUrl": "http://www.londontransit.ca/fares-and-passes/fares/",
+     "agencyId": "LTC - 2026 September Schedules",
+     "tripId": "20261008_08:14_ca-on-London-Transit_2354365",
+     "routeShortName": "34",
+     "routeLongName": "Route 34",
+     "tripShortName": "",
+     "displayName": "34",
+     "cancelled": false,
+     "source": "ca-on_London-Transit.gtfs.zip/stop_times.txt:266671:266726",
+     "bikesAllowed": false,
+     "wheelchairAccessible": "ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Alumni Hall EB - #141",
+      "stopId": "ca-on-London-Transit_ALUMHAL1",
+      "importance": 0.000004176271886535687,
+      "lat": 43.006042,
+      "lon": -81.27494,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:34:00Z",
+      "departure": "2026-10-08T12:34:00Z",
+      "scheduledArrival": "2026-10-08T12:34:00Z",
+      "scheduledDeparture": "2026-10-08T12:34:00Z",
+      "stopCode": "141",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 43.00129,
+      "lon": -81.27883,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T12:45:00Z",
+      "scheduledArrival": "2026-10-08T12:45:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 660,
+     "startTime": "2026-10-08T12:34:00Z",
+     "endTime": "2026-10-08T12:45:00Z",
+     "scheduledStartTime": "2026-10-08T12:34:00Z",
+     "scheduledEndTime": "2026-10-08T12:45:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 754
+    }
+   ]
+  }
+ ],
+ "previousPageCursor": "EARLIER|1791460800",
+ "nextPageCursor": "LATER|1791461760"
+}

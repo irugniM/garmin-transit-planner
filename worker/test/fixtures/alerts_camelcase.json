@@ -1,0 +1,37 @@
+{
+ "entity": [
+  {
+   "id": "9",
+   "alert": {
+    "activePeriod": [
+     {
+      "start": "1791190800"
+     }
+    ],
+    "informedEntity": [
+     {
+      "routeId": "02",
+      "stopId": "NATSCI"
+     }
+    ],
+    "effect": "STOP_MOVED",
+    "headerText": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "descriptionText": {
+     "translation": [
+      {
+       "text": "Natural Science closed. Temp stop 40 metres north.",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

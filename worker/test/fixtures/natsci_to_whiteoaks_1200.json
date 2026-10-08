@@ -1,0 +1,952 @@
+{
+ "requestParameters": {},
+ "from": {
+  "name": "START",
+  "lat": 43.010172,
+  "lon": -81.273174,
+  "level": 0,
+  "vertexType": "NORMAL"
+ },
+ "to": {
+  "name": "END",
+  "lat": 42.93242,
+  "lon": -81.22351,
+  "level": 0,
+  "vertexType": "NORMAL"
+ },
+ "direct": [],
+ "itineraries": [
+  {
+   "duration": 2640,
+   "startTime": "2026-10-08T16:07:00Z",
+   "endTime": "2026-10-08T16:51:00Z",
+   "transfers": 0,
+   "id": "Clch3qrrUE2BRUAphQfNrntRVMAyHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1JJQ0hXSU4yOSveyDzygUVAQdMwfERMUVTASKT/ntYGUPSEn9YGWgRXQUxLYAEKrwEKAjkwEisyMDI2MTAwOF8xMjoxNV9jYS1vbi1Mb25kb24tVHJhbnNpdF8yMzU0OTYzGh1jYS1vbi1Mb25kb24tVHJhbnNpdF9SSUNIV0lOMiEr3sg88oFFQCnTMHxETFFUwDIdY2Etb24tTG9uZG9uLVRyYW5zaXRfV0hJVE9NQTE5uqC+ZU53RUBBjgbwFkhOVMBI9ISf1gZQwJKf1gZaA0JVU2ABcQAAAAAAAAAACmAaHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1dISVRPTUExIbqgvmVOd0VAKY4G8BZITlTAOXMR34lZd0VAQQ4V4/xNTlTASMCSn9YGUPSTn9YGWgRXQUxLYAFpAAAAAAAAAAA=",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 43.010172,
+      "lon": -81.273174,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:07:00Z",
+      "scheduledDeparture": "2026-10-08T16:07:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Richmond at Windermere SB - #1521",
+      "stopId": "ca-on-London-Transit_RICHWIN2",
+      "importance": 9.904144917527447e-7,
+      "lat": 43.015205,
+      "lon": -81.27028,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:19:00Z",
+      "scheduledArrival": "2026-10-08T16:19:00Z",
+      "stopCode": "1521",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 720,
+     "startTime": "2026-10-08T16:07:00Z",
+     "endTime": "2026-10-08T16:19:00Z",
+     "scheduledStartTime": "2026-10-08T16:07:00Z",
+     "scheduledEndTime": "2026-10-08T16:19:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 793
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Richmond at Windermere SB - #1521",
+      "stopId": "ca-on-London-Transit_RICHWIN2",
+      "importance": 9.904144917527447e-7,
+      "lat": 43.015205,
+      "lon": -81.27028,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:19:00Z",
+      "scheduledDeparture": "2026-10-08T16:19:00Z",
+      "stopCode": "1521",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:48:00Z",
+      "scheduledArrival": "2026-10-08T16:48:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 1740,
+     "startTime": "2026-10-08T16:19:00Z",
+     "endTime": "2026-10-08T16:48:00Z",
+     "scheduledStartTime": "2026-10-08T16:19:00Z",
+     "scheduledEndTime": "2026-10-08T16:48:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "Express to White Oaks Mall",
+     "tripFrom": {
+      "name": "Masonville Place Stop #4 - #1143",
+      "stopId": "ca-on-London-Transit_MASOSTO4",
+      "importance": 0.000005726423296437133,
+      "lat": 43.025883,
+      "lon": -81.28161000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:15:00Z",
+      "scheduledDeparture": "2026-10-08T16:15:00Z",
+      "stopCode": "1143",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:48:00Z",
+      "scheduledArrival": "2026-10-08T16:48:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "ca-on-London-Transit_90",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeColor": "f89d53",
+     "routeTextColor": "000000",
+     "routeType": 3,
+     "agencyName": "London Transit",
+     "agencyUrl": "http://www.londontransit.ca",
+     "agencyFareUrl": "http://www.londontransit.ca/fares-and-passes/fares/",
+     "agencyId": "LTC - 2026 September Schedules",
+     "tripId": "20261008_12:15_ca-on-London-Transit_2354963",
+     "routeShortName": "90",
+     "routeLongName": "Route 90",
+     "tripShortName": "",
+     "displayName": "90",
+     "cancelled": false,
+     "source": "ca-on_London-Transit.gtfs.zip/stop_times.txt:353110:353124",
+     "bikesAllowed": false,
+     "wheelchairAccessible": "ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:48:00Z",
+      "departure": "2026-10-08T16:48:00Z",
+      "scheduledArrival": "2026-10-08T16:48:00Z",
+      "scheduledDeparture": "2026-10-08T16:48:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 42.93242,
+      "lon": -81.22351,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:51:00Z",
+      "scheduledArrival": "2026-10-08T16:51:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 180,
+     "startTime": "2026-10-08T16:48:00Z",
+     "endTime": "2026-10-08T16:51:00Z",
+     "scheduledStartTime": "2026-10-08T16:48:00Z",
+     "scheduledEndTime": "2026-10-08T16:51:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 155
+    }
+   ]
+  },
+  {
+   "duration": 2700,
+   "startTime": "2026-10-08T16:09:00Z",
+   "endTime": "2026-10-08T16:54:00Z",
+   "transfers": 0,
+   "id": "Clch3qrrUE2BRUAphQfNrntRVMAyHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1VOSVZIT1MyOWh5HtydgUVAQYvh6gCIUVTASJyAn9YGUISDn9YGWgRXQUxLYAEKrwEKAjEzEisyMDI2MTAwOF8xMjowOF9jYS1vbi1Mb25kb24tVHJhbnNpdF8yMzUwOTE0Gh1jYS1vbi1Mb25kb24tVHJhbnNpdF9VTklWSE9TMiFoeR7cnYFFQCmL4eoAiFFUwDIdY2Etb24tTG9uZG9uLVRyYW5zaXRfV0VMTEJSQTI5SIrIsIp3RUBBPrMkQE1OVMBIhIOf1gZQ9JOf1gZaA0JVU2ABcQAAAAAAAAAACmAaHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1dFTExCUkEyIUiKyLCKd0VAKT6zJEBNTlTAOXMR34lZd0VAQQ4V4/xNTlTASPSTn9YGUKiVn9YGWgRXQUxLYAFpAAAAAAAAAAA=",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 43.010172,
+      "lon": -81.273174,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:09:00Z",
+      "scheduledDeparture": "2026-10-08T16:09:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Universtiy Hospital SB - #1817",
+      "stopId": "ca-on-London-Transit_UNIVHOS2",
+      "importance": 0.0000014645954706793418,
+      "lat": 43.01263,
+      "lon": -81.273926,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:15:00Z",
+      "scheduledArrival": "2026-10-08T16:15:00Z",
+      "stopCode": "1817",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 360,
+     "startTime": "2026-10-08T16:09:00Z",
+     "endTime": "2026-10-08T16:15:00Z",
+     "scheduledStartTime": "2026-10-08T16:09:00Z",
+     "scheduledEndTime": "2026-10-08T16:15:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 370
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Universtiy Hospital SB - #1817",
+      "stopId": "ca-on-London-Transit_UNIVHOS2",
+      "importance": 0.0000014645954706793418,
+      "lat": 43.01263,
+      "lon": -81.273926,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:15:00Z",
+      "scheduledDeparture": "2026-10-08T16:15:00Z",
+      "stopCode": "1817",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Wellington at Bradley  SB - #1927",
+      "stopId": "ca-on-London-Transit_WELLBRA2",
+      "importance": 0.0000030916014566173544,
+      "lat": 42.93392,
+      "lon": -81.223465,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:51:00Z",
+      "scheduledArrival": "2026-10-08T16:51:00Z",
+      "stopCode": "1927",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 2160,
+     "startTime": "2026-10-08T16:15:00Z",
+     "endTime": "2026-10-08T16:51:00Z",
+     "scheduledStartTime": "2026-10-08T16:15:00Z",
+     "scheduledEndTime": "2026-10-08T16:51:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "White Oaks Mall via Richmond & Wellington",
+     "tripFrom": {
+      "name": "Masonville Place Stop #4 - #1143",
+      "stopId": "ca-on-London-Transit_MASOSTO4",
+      "importance": 0.000005726423296437133,
+      "lat": 43.025883,
+      "lon": -81.28161000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:08:00Z",
+      "scheduledDeparture": "2026-10-08T16:08:00Z",
+      "stopCode": "1143",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:52:00Z",
+      "scheduledArrival": "2026-10-08T16:52:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "ca-on-London-Transit_13",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeColor": "929ebc",
+     "routeTextColor": "000000",
+     "routeType": 3,
+     "agencyName": "London Transit",
+     "agencyUrl": "http://www.londontransit.ca",
+     "agencyFareUrl": "http://www.londontransit.ca/fares-and-passes/fares/",
+     "agencyId": "LTC - 2026 September Schedules",
+     "tripId": "20261008_12:08_ca-on-London-Transit_2350914",
+     "routeShortName": "13",
+     "routeLongName": "Route 13",
+     "tripShortName": "",
+     "displayName": "13",
+     "cancelled": false,
+     "source": "ca-on_London-Transit.gtfs.zip/stop_times.txt:89401:89444",
+     "bikesAllowed": false,
+     "wheelchairAccessible": "ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Wellington at Bradley  SB - #1927",
+      "stopId": "ca-on-London-Transit_WELLBRA2",
+      "importance": 0.0000030916014566173544,
+      "lat": 42.93392,
+      "lon": -81.223465,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:51:00Z",
+      "departure": "2026-10-08T16:51:00Z",
+      "scheduledArrival": "2026-10-08T16:51:00Z",
+      "scheduledDeparture": "2026-10-08T16:51:00Z",
+      "stopCode": "1927",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 42.93242,
+      "lon": -81.22351,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:54:00Z",
+      "scheduledArrival": "2026-10-08T16:54:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 180,
+     "startTime": "2026-10-08T16:51:00Z",
+     "endTime": "2026-10-08T16:54:00Z",
+     "scheduledStartTime": "2026-10-08T16:51:00Z",
+     "scheduledEndTime": "2026-10-08T16:54:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 211
+    }
+   ]
+  },
+  {
+   "duration": 2400,
+   "startTime": "2026-10-08T16:11:00Z",
+   "endTime": "2026-10-08T16:51:00Z",
+   "transfers": 1,
+   "id": "ClUh3qrrUE2BRUAphQfNrntRVMAyG2NhLW9uLUxvbmRvbi1UcmFuc2l0X05BVFNDSTl/orJhTYFFQEHkDwaee1FUwEiUgZ/WBlDQgZ/WBloEV0FMS2ABCqUBCgMxMDISKzIwMjYxMDA4XzEyOjEyX2NhLW9uLUxvbmRvbi1UcmFuc2l0XzIzNDk5MDEaG2NhLW9uLUxvbmRvbi1UcmFuc2l0X05BVFNDSSF/orJhTYFFQCnkDwaee1FUwDIdY2Etb24tTG9uZG9uLVRyYW5zaXRfUklDSE9YRjI53sfRHFl/RUBB1qwzvi9QVMBI0IGf1gZQoIef1gZaA0JVU2ABCnYaHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1JJQ0hPWEYyId7H0RxZf0VAKdasM74vUFTAMh1jYS1vbi1Mb25kb24tVHJhbnNpdF9SSUNIT1hGMjnex9EcWX9FQEHWrDO+L1BUwEigh5/WBlCYiJ/WBloEV0FMS2ABCq8BCgI5MBIrMjAyNjEwMDhfMTI6MTVfY2Etb24tTG9uZG9uLVRyYW5zaXRfMjM1NDk2MxodY2Etb24tTG9uZG9uLVRyYW5zaXRfUklDSE9YRjIh3sfRHFl/RUAp1qwzvi9QVMAyHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1dISVRPTUExObqgvmVOd0VAQY4G8BZITlTASJiIn9YGUMCSn9YGWgNCVVNgAXEAAAAAAAAAAApgGh1jYS1vbi1Mb25kb24tVHJhbnNpdF9XSElUT01BMSG6oL5lTndFQCmOBvAWSE5UwDlzEd+JWXdFQEEOFeP8TU5UwEjAkp/WBlD0k5/WBloEV0FMS2ABaQAAAAAAAAAA",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 43.010172,
+      "lon": -81.273174,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:11:00Z",
+      "scheduledDeparture": "2026-10-08T16:11:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Natural Science - #1222",
+      "stopId": "ca-on-London-Transit_NATSCI",
+      "importance": 0.000004118268407182768,
+      "lat": 43.010174,
+      "lon": -81.27317,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:12:00Z",
+      "scheduledArrival": "2026-10-08T16:12:00Z",
+      "stopCode": "1222",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 60,
+     "startTime": "2026-10-08T16:11:00Z",
+     "endTime": "2026-10-08T16:12:00Z",
+     "scheduledStartTime": "2026-10-08T16:11:00Z",
+     "scheduledEndTime": "2026-10-08T16:12:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 0
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Natural Science - #1222",
+      "stopId": "ca-on-London-Transit_NATSCI",
+      "importance": 0.000004118268407182768,
+      "lat": 43.010174,
+      "lon": -81.27317,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:12:00Z",
+      "scheduledDeparture": "2026-10-08T16:12:00Z",
+      "stopCode": "1222",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Richmond at Oxford SB - #1495",
+      "stopId": "ca-on-London-Transit_RICHOXF2",
+      "importance": 0.0000100723564173677,
+      "lat": 42.994907,
+      "lon": -81.252914,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:24:00Z",
+      "scheduledArrival": "2026-10-08T16:24:00Z",
+      "stopCode": "1495",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 720,
+     "startTime": "2026-10-08T16:12:00Z",
+     "endTime": "2026-10-08T16:24:00Z",
+     "scheduledStartTime": "2026-10-08T16:12:00Z",
+     "scheduledEndTime": "2026-10-08T16:24:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "Downtown via Richmond",
+     "tripFrom": {
+      "name": "Natural Science - #1222",
+      "stopId": "ca-on-London-Transit_NATSCI",
+      "importance": 0.000004118268407182768,
+      "lat": 43.010174,
+      "lon": -81.27317,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:12:00Z",
+      "scheduledDeparture": "2026-10-08T16:12:00Z",
+      "stopCode": "1222",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "Queens at Ridout Station WB - #1443",
+      "stopId": "ca-on-London-Transit_QUENRIDO",
+      "importance": 0.0000049274208322458435,
+      "lat": 42.98367999999999,
+      "lon": -81.25420000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:32:00Z",
+      "scheduledArrival": "2026-10-08T16:32:00Z",
+      "stopCode": "1443",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "ca-on-London-Transit_102",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeColor": "75aaae",
+     "routeTextColor": "000000",
+     "routeType": 3,
+     "agencyName": "London Transit",
+     "agencyUrl": "http://www.londontransit.ca",
+     "agencyFareUrl": "http://www.londontransit.ca/fares-and-passes/fares/",
+     "agencyId": "LTC - 2026 September Schedules",
+     "tripId": "20261008_12:12_ca-on-London-Transit_2349901",
+     "routeShortName": "102",
+     "routeLongName": "Route 102",
+     "tripShortName": "",
+     "displayName": "102",
+     "cancelled": false,
+     "source": "ca-on_London-Transit.gtfs.zip/stop_times.txt:51246:51260",
+     "bikesAllowed": false,
+     "wheelchairAccessible": "ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "Richmond at Oxford SB - #1495",
+      "stopId": "ca-on-London-Transit_RICHOXF2",
+      "importance": 0.0000100723564173677,
+      "lat": 42.994907,
+      "lon": -81.252914,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:24:00Z",
+      "departure": "2026-10-08T16:24:00Z",
+      "scheduledArrival": "2026-10-08T16:24:00Z",
+      "scheduledDeparture": "2026-10-08T16:24:00Z",
+      "stopCode": "1495",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "Richmond at Oxford SB - #1495",
+      "stopId": "ca-on-London-Transit_RICHOXF2",
+      "importance": 0.0000100723564173677,
+      "lat": 42.994907,
+      "lon": -81.252914,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:26:00Z",
+      "scheduledArrival": "2026-10-08T16:26:00Z",
+      "stopCode": "1495",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 120,
+     "startTime": "2026-10-08T16:24:00Z",
+     "endTime": "2026-10-08T16:26:00Z",
+     "scheduledStartTime": "2026-10-08T16:24:00Z",
+     "scheduledEndTime": "2026-10-08T16:26:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 0
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Richmond at Oxford SB - #1495",
+      "stopId": "ca-on-London-Transit_RICHOXF2",
+      "importance": 0.0000100723564173677,
+      "lat": 42.994907,
+      "lon": -81.252914,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:26:00Z",
+      "scheduledDeparture": "2026-10-08T16:26:00Z",
+      "stopCode": "1495",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:48:00Z",
+      "scheduledArrival": "2026-10-08T16:48:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 1320,
+     "startTime": "2026-10-08T16:26:00Z",
+     "endTime": "2026-10-08T16:48:00Z",
+     "scheduledStartTime": "2026-10-08T16:26:00Z",
+     "scheduledEndTime": "2026-10-08T16:48:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "Express to White Oaks Mall",
+     "tripFrom": {
+      "name": "Masonville Place Stop #4 - #1143",
+      "stopId": "ca-on-London-Transit_MASOSTO4",
+      "importance": 0.000005726423296437133,
+      "lat": 43.025883,
+      "lon": -81.28161000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:15:00Z",
+      "scheduledDeparture": "2026-10-08T16:15:00Z",
+      "stopCode": "1143",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:48:00Z",
+      "scheduledArrival": "2026-10-08T16:48:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "ca-on-London-Transit_90",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeColor": "f89d53",
+     "routeTextColor": "000000",
+     "routeType": 3,
+     "agencyName": "London Transit",
+     "agencyUrl": "http://www.londontransit.ca",
+     "agencyFareUrl": "http://www.londontransit.ca/fares-and-passes/fares/",
+     "agencyId": "LTC - 2026 September Schedules",
+     "tripId": "20261008_12:15_ca-on-London-Transit_2354963",
+     "routeShortName": "90",
+     "routeLongName": "Route 90",
+     "tripShortName": "",
+     "displayName": "90",
+     "cancelled": false,
+     "source": "ca-on_London-Transit.gtfs.zip/stop_times.txt:353110:353124",
+     "bikesAllowed": false,
+     "wheelchairAccessible": "ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:48:00Z",
+      "departure": "2026-10-08T16:48:00Z",
+      "scheduledArrival": "2026-10-08T16:48:00Z",
+      "scheduledDeparture": "2026-10-08T16:48:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 42.93242,
+      "lon": -81.22351,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:51:00Z",
+      "scheduledArrival": "2026-10-08T16:51:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 180,
+     "startTime": "2026-10-08T16:48:00Z",
+     "endTime": "2026-10-08T16:51:00Z",
+     "scheduledStartTime": "2026-10-08T16:48:00Z",
+     "scheduledEndTime": "2026-10-08T16:51:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 155
+    }
+   ]
+  },
+  {
+   "duration": 2640,
+   "startTime": "2026-10-08T16:22:00Z",
+   "endTime": "2026-10-08T17:06:00Z",
+   "transfers": 0,
+   "id": "Clch3qrrUE2BRUAphQfNrntRVMAyHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1JJQ0hXSU4yOSveyDzygUVAQdMwfERMUVTASKiGn9YGUPiLn9YGWgRXQUxLYAEKrwEKAjkwEisyMDI2MTAwOF8xMjozMF9jYS1vbi1Mb25kb24tVHJhbnNpdF8yMzU0OTY0Gh1jYS1vbi1Mb25kb24tVHJhbnNpdF9SSUNIV0lOMiEr3sg88oFFQCnTMHxETFFUwDIdY2Etb24tTG9uZG9uLVRyYW5zaXRfV0hJVE9NQTE5uqC+ZU53RUBBjgbwFkhOVMBI+Iuf1gZQxJmf1gZaA0JVU2ABcQAAAAAAAAAACmAaHWNhLW9uLUxvbmRvbi1UcmFuc2l0X1dISVRPTUExIbqgvmVOd0VAKY4G8BZITlTAOXMR34lZd0VAQQ4V4/xNTlTASMSZn9YGUPian9YGWgRXQUxLYAFpAAAAAAAAAAA=",
+   "legs": [
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "START",
+      "lat": 43.010172,
+      "lon": -81.273174,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:22:00Z",
+      "scheduledDeparture": "2026-10-08T16:22:00Z",
+      "vertexType": "NORMAL"
+     },
+     "to": {
+      "name": "Richmond at Windermere SB - #1521",
+      "stopId": "ca-on-London-Transit_RICHWIN2",
+      "importance": 9.904144917527447e-7,
+      "lat": 43.015205,
+      "lon": -81.27028,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T16:34:00Z",
+      "scheduledArrival": "2026-10-08T16:34:00Z",
+      "stopCode": "1521",
+      "vertexType": "TRANSIT",
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 720,
+     "startTime": "2026-10-08T16:22:00Z",
+     "endTime": "2026-10-08T16:34:00Z",
+     "scheduledStartTime": "2026-10-08T16:22:00Z",
+     "scheduledEndTime": "2026-10-08T16:34:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 793
+    },
+    {
+     "mode": "BUS",
+     "from": {
+      "name": "Richmond at Windermere SB - #1521",
+      "stopId": "ca-on-London-Transit_RICHWIN2",
+      "importance": 9.904144917527447e-7,
+      "lat": 43.015205,
+      "lon": -81.27028,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:34:00Z",
+      "scheduledDeparture": "2026-10-08T16:34:00Z",
+      "stopCode": "1521",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T17:03:00Z",
+      "scheduledArrival": "2026-10-08T17:03:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "duration": 1740,
+     "startTime": "2026-10-08T16:34:00Z",
+     "endTime": "2026-10-08T17:03:00Z",
+     "scheduledStartTime": "2026-10-08T16:34:00Z",
+     "scheduledEndTime": "2026-10-08T17:03:00Z",
+     "realTime": false,
+     "scheduled": true,
+     "interlineWithPreviousLeg": false,
+     "headsign": "Express to White Oaks Mall",
+     "tripFrom": {
+      "name": "Masonville Place Stop #4 - #1143",
+      "stopId": "ca-on-London-Transit_MASOSTO4",
+      "importance": 0.000005726423296437133,
+      "lat": 43.025883,
+      "lon": -81.28161000000001,
+      "level": 0,
+      "tz": "America/Toronto",
+      "departure": "2026-10-08T16:30:00Z",
+      "scheduledDeparture": "2026-10-08T16:30:00Z",
+      "stopCode": "1143",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "tripTo": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T17:03:00Z",
+      "scheduledArrival": "2026-10-08T17:03:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "pickupType": "NORMAL",
+      "dropoffType": "NORMAL",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "routeId": "ca-on-London-Transit_90",
+     "routeUrl": "",
+     "directionId": "0",
+     "routeColor": "f89d53",
+     "routeTextColor": "000000",
+     "routeType": 3,
+     "agencyName": "London Transit",
+     "agencyUrl": "http://www.londontransit.ca",
+     "agencyFareUrl": "http://www.londontransit.ca/fares-and-passes/fares/",
+     "agencyId": "LTC - 2026 September Schedules",
+     "tripId": "20261008_12:30_ca-on-London-Transit_2354964",
+     "routeShortName": "90",
+     "routeLongName": "Route 90",
+     "tripShortName": "",
+     "displayName": "90",
+     "cancelled": false,
+     "source": "ca-on_London-Transit.gtfs.zip/stop_times.txt:354685:354698",
+     "bikesAllowed": false,
+     "wheelchairAccessible": "ACCESSIBLE",
+     "reservation": "NONE"
+    },
+    {
+     "mode": "WALK",
+     "from": {
+      "name": "White Oaks Mall Stop 2 - #2061",
+      "stopId": "ca-on-London-Transit_WHITOMA1",
+      "importance": 0.00000568292034586193,
+      "lat": 42.93208,
+      "lon": -81.22315,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T17:03:00Z",
+      "departure": "2026-10-08T17:03:00Z",
+      "scheduledArrival": "2026-10-08T17:03:00Z",
+      "scheduledDeparture": "2026-10-08T17:03:00Z",
+      "stopCode": "2061",
+      "vertexType": "TRANSIT",
+      "cancelled": false,
+      "modes": [
+       "BUS"
+      ]
+     },
+     "to": {
+      "name": "END",
+      "lat": 42.93242,
+      "lon": -81.22351,
+      "level": 0,
+      "tz": "America/Toronto",
+      "arrival": "2026-10-08T17:06:00Z",
+      "scheduledArrival": "2026-10-08T17:06:00Z",
+      "vertexType": "NORMAL"
+     },
+     "duration": 180,
+     "startTime": "2026-10-08T17:03:00Z",
+     "endTime": "2026-10-08T17:06:00Z",
+     "scheduledStartTime": "2026-10-08T17:03:00Z",
+     "scheduledEndTime": "2026-10-08T17:06:00Z",
+     "realTime": false,
+     "scheduled": false,
+     "distance": 155
+    }
+   ]
+  }
+ ],
+ "previousPageCursor": "EARLIER|1791475200",
+ "nextPageCursor": "LATER|1791476580"
+}

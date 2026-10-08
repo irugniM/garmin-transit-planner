@@ -1,0 +1,18 @@
+# Watch build output and secrets
+watch/bin/
+watch/gen/
+watch/internal-mir/
+watch/external-mir/
+watch/resources-secret/
+*.prg
+*.iq
+*.debug.xml
+developer_key.*
+
+# Worker
+worker/node_modules/
+worker/.wrangler/
+worker/.dev.vars
+.dev.vars
+
+.DS_Store
