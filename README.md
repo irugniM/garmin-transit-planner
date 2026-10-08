@@ -45,10 +45,11 @@ Reply (times are America/Toronto, lines are at most 18 characters):
 
 ```json
 {"v":1,"ok":true,"leave":1791460860,"arr":1791462360,"rt":false,"xfers":1,
- "lines":["Leave 08:01","1 transfer","Walk 1m to #1143","Bus 13A 08:02","to White Oaks Mall",
-          "Off #509 08:11","Walk 2m to #1173","Bus 27 08:15","to Capulet Lane",
-          "Off #1647 08:23","Walk 3m","Arrive 08:26"],
- "alert":"#1647 closed: temp stop 130m W","next":"Next: 08:10"}
+ "lines":["Leave 08:01","1 transfer","Walk 1m to #1143","Masonville Pl 4","Bus 13A 08:02",
+          "to White Oaks Mall","Off #509 08:11","Delaware Hall SB","Walk 2m to #1173",
+          "Talbot College","Bus 27 08:15","to Capulet Lane","Off #1647 08:23",
+          "Sarnia/Western WB","Temp stop 130m W","Walk 3m","Arrive 08:26"],
+ "alert":"#1647 closed: temp stop 130m W","next":"Next bus 08:14"}
 ```
 
 - Which trip: the earliest arrival, except that a trip with fewer transfers wins
@@ -65,13 +66,21 @@ Reply (times are America/Toronto, lines are at most 18 characters):
 - Every bus has a line naming where to board just before it (`Walk 1m to #1143`,
   or `Board at #1143` when there is no walk), except a transfer at the same stop
   the previous bus left you at (its `Off #1234` line names it). Every bus has its
-  `Off` line, and a trip ends with the final walk and `Arrive`. There is no line
-  limit; if a reply would pass 600 bytes, the walk line, the single-bus
-  alternative, headsign lines (middle legs first), then `Leave` are dropped,
-  never the transfer count, Board, Bus, Off, the last walk or Arrive.
+  `Off` line, and a trip ends with the final walk and `Arrive`.
+- Under each boarding line is the stop's name from Transitous, shortened to
+  18 characters (`at`/`&` -> `/`, Road -> Rd, Street -> St, `Stop 3` -> `3`,
+  `north of` -> `N of`, more abbreviations and dropped street types only when
+  still too long, then a cut at a space or `/`), with the direction (`WB`) when
+  it fits: `Sarnia/Western WB`, `Richmond/Univ SB`, `Masonville Pl 3`. No line
+  when the name is empty or just the stop code. `Off #X` gets the same name
+  line, but it is droppable (unless the next bus leaves from that stop).
+- There is no line limit; if a reply would pass 600 bytes, the walk line, the
+  single-bus alternative, headsign lines (middle legs first), Off stop names,
+  then `Leave` are dropped, never the transfer count, Board and its stop name,
+  Bus, Off, closure notes, the last walk or Arrive.
 - If a stop you board at or get off at is closed for that route (LTC alerts
   feed), a line right under its `Walk .. to #X` / `Board at #X` / `Off #X`
-  line says where to go: `Temp stop 130m W`, `Temp 2 poles S`,
+  line (after the stop name line, if any) says where to go: `Temp stop 130m W`, `Temp 2 poles S`,
   `Use Althouse` (alternative stop named), or `Closed: see alert`. Never
   dropped.
 - Within 150 m of the destination the reply is `"lines":["You're here"]`
@@ -87,8 +96,11 @@ Reply (times are America/Toronto, lines are at most 18 characters):
   the reply is
   `"lines":["Walk 12 min","Arrive 08:12"]`, `xfers` 0, with the bus as
   `"next":"Bus: arr 08:26"` (arrive-by: `Bus: leave 07:58`). When the bus wins,
-  `next` stays `Next: HH:MM`; if the walk gets there at most 10 min after the
-  bus (arrive-by: leaves at most 10 min earlier) it is an optional last line,
+  `next` is `Next bus HH:MM`: the first bus departure of the next trip whose
+  first bus leaves strictly after the chosen trip's first bus (arrive-by:
+  `Earlier bus HH:MM`, the last first-bus departure strictly before it).
+  If the walk gets there at most 10 min after the bus (arrive-by: leaves at
+  most 10 min earlier) it is an optional last line,
   `Walk 42m arr 13:41` (arrive-by: `Walk 42m lv 12:18`), dropped first when
   space runs out. A slower walk only fills an empty `next`.
 
@@ -153,7 +165,7 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
 
 - Menu: **To School**, **To Home**, **Test connection**. UP/DOWN move, START opens.
 - Trip: the top shows `Leave in N min` (from the reply's `leave`), then the alert
-  line (if any), the steps, and `Next: hh:mm`. UP/DOWN scroll, START refreshes,
+  line (if any), the steps, and `next` (`Next bus hh:mm`). UP/DOWN scroll, START refreshes,
   BACK returns to the menu.
 - Position: uses the last known position right away, keeps a GPS fix running
   until accuracy is USABLE or better, and re-asks once if the better fix is more

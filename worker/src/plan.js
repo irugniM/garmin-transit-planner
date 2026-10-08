@@ -92,8 +92,11 @@ function legSecs(leg) {
 //   leave, xfer ("No transfer", "1 transfer", "2 transfers"; trips with a
 //   bus only), board ("Walk 6m to #1234" or "Board at #1234"), bus, to
 //   (headsign), off, walkEnd (walk after the last bus), walk (walk-only
-//   trip), arrive, closed (right after a board or Off line whose stop is
-//   closed for that route: "Temp stop 130m W", "Use Althouse", or
+//   trip), arrive, name (the boarding stop's name, right after its board
+//   line: "Sarnia/Western WB"), offname (the same for an Off stop;
+//   droppable, except when the next bus leaves from that very stop),
+//   closed (right after the board/Off line, or its name line, when that stop
+//   is closed for the route: "Temp stop 130m W", "Use Althouse", or
 //   "Closed: see alert").
 // Every bus gets a board line naming its stop, built from the bus leg itself
 // (so a missing, split or stop-less walk leg can't hide it). The only
@@ -121,6 +124,12 @@ export function itineraryItems(it, alerts = null) {
     if (!sameStop) {
       const board = walked && walkSecs > 0 ? `Walk ${mins(walkSecs)}m to ${stopTag(from)}` : `Board at ${stopTag(from)}`;
       out.push({ k: 'board', t: clip(board), n: busNo });
+      const name = stopName(from);
+      if (name) out.push({ k: 'name', t: name, n: busNo });
+    } else {
+      // The Off stop's name above is now the boarding stop's: keep it.
+      const prev = out.findLast((x) => x.k === 'offname');
+      if (prev) prev.k = 'name';
     }
     // Boarding stop closed for this route: say where the temporary stop is
     // (for a same-stop transfer, unless the Off line above already did).
@@ -133,6 +142,8 @@ export function itineraryItems(it, alerts = null) {
     out.push({ k: 'bus', t: clip(bus), n: busNo });
     if (to) out.push({ k: 'to', t: destLine(to), n: busNo, of: nBus });
     out.push({ k: 'off', t: clip(`Off ${stopTag(leg.to)} ${hhmm(toSecs(leg.endTime))}`), n: busNo });
+    const offName = stopName(leg.to);
+    if (offName) out.push({ k: 'offname', t: offName, n: busNo });
     const shutOff = closureLine(leg.to, route, alerts);
     if (shutOff) out.push({ k: 'closed', t: shutOff, n: busNo });
     lastOff = leg.to?.stopId || null;
@@ -178,6 +189,60 @@ export function closedText(detail) {
   return 'Closed: see alert';
 }
 
+// Stop names as Transitous gives them ("Richmond at University SB - #1513")
+// -> at most 18 chars: "Richmond/Univ SB". Direction only when it fits.
+// null when there's no real name (empty, or just the stop code).
+const ABBR = [
+  [/\bRoad\b/gi, 'Rd'], [/\bStreet\b/gi, 'St'], [/\bAvenue\b/gi, 'Av'], [/\bDrive\b/gi, 'Dr'],
+  [/\bCrescent\b/gi, 'Cr'], [/\bBoulevard\b/gi, 'Blvd'], [/\bCourt\b/gi, 'Ct'], [/\bPlace\b/gi, 'Pl'],
+  [/\bParkway\b/gi, 'Pkwy'], [/\bTerrace\b/gi, 'Ter'], [/\bLane\b/gi, 'Ln'], [/\bGate\b/gi, 'Gt'],
+  [/\bSquare\b/gi, 'Sq'], [/\bHighway\b/gi, 'Hwy'], [/\bMount\b/gi, 'Mt'], [/\bSaint\b/gi, 'St'],
+  [/\b(north|south|east|west)\s+of\b/gi, (m, d) => `${d[0].toUpperCase()} of`],
+];
+// Only when the name is still too long.
+const ABBR_MORE = [
+  [/\bUniver?sit?y\b|\bUniverstiy\b/gi, 'Univ'], [/\bHospital\b/gi, 'Hosp'], [/\bCollege\b/gi, 'Coll'],
+  [/\bCent(re|er)\b/gi, 'Ctr'], [/\bTerminal\b/gi, 'Term'], [/\bNorth\b/g, 'N'], [/\bSouth\b/g, 'S'],
+  [/\bEast\b/g, 'E'], [/\bWest\b/g, 'W'], [/\s+([NSEW]) of\s+/g, ' $1/'],
+];
+
+export function stopName(place, max = MAX_LINE) {
+  const code = String(place?.stopCode || '').trim();
+  let s = String(place?.name || '').replace(/\s+-\s*#\s*\w+\s*$/, '').replace(/\s+/g, ' ').trim();
+  let dir = '';
+  const m = s.match(/\s+([NSEW]B)$/);
+  if (m) {
+    dir = m[1];
+    s = s.slice(0, m.index).trim();
+  }
+  if (!s || /^#?\d+$/.test(s) || (code && s.replace(/^#\s*/, '') === code)) return null;
+  s = s
+    .replace(/\s+(?:at\s+)?Stop\s*#?\s*(\d+)\b/gi, ' $1') // "Mall at Stop 2" -> "Mall 2"
+    .replace(/\bStop\b/gi, ' ')
+    .replace(/\s+(?:at|&)\s+/gi, '/');
+  for (const [re, to] of ABBR) s = s.replace(re, to);
+  const tidy = (x) => x.replace(/\s*\/\s*/g, '/').replace(/\s+/g, ' ').trim();
+  s = tidy(s);
+  const withDir = (x) => (dir && x.length + 1 + dir.length <= max ? `${x} ${dir}` : x);
+  const over = (x) => x.length + (dir ? dir.length + 1 : 0) > max;
+  if (over(s)) {
+    for (const [re, to] of ABBR_MORE) s = s.replace(re, to);
+    s = tidy(s);
+  }
+  // Still long: drop street types before a '/', the end, or a trailing
+  // N/S/E/W ("Dundas St/Highbury Av N" -> "Dundas/Highbury N").
+  if (over(s)) s = tidy(s.replace(/\s+(St|Rd|Av|Dr|Cr|Blvd|Ct|Pl|Ln|Ter|Pkwy|Gt|Sq)(?=\s+[NSEW](?:\/|$)|\/|$)/g, ''));
+  if (s.length <= max) return withDir(s);
+  // Cut at a space or '/' near the limit, then drop a dangling joiner; but
+  // keep a bit of the cross street rather than lose it to a word cut.
+  let cut = -1;
+  for (let i = 1; i <= max; i++) if (s[i] === ' ' || s[i] === '/') cut = i;
+  const slash = s.indexOf('/');
+  if (slash > 0 && cut <= slash && slash + 4 <= max) cut = -1;
+  s = cut > max / 2 ? s.slice(0, cut) : s.slice(0, max);
+  return s.replace(/(\s+(of|and|-)|[\/&-])+$/i, '').trim();
+}
+
 export function xferText(n) {
   if (!n) return 'No transfer';
   return n === 1 ? '1 transfer' : `${n} transfers`;
@@ -189,13 +254,15 @@ export function itineraryLines(it) {
 
 // Drop order when a reply is over budget: the walk alternative, the
 // no-transfer alternative, headsign lines (middle legs first,
-// the first leg's last), then the Leave line (the watch shows the leave time
-// in its header anyway). The transfer count, Board, Bus, Off, the last walk
-// and Arrive are never dropped.
+// the first leg's last), Off stop names, then the Leave line (the watch shows
+// the leave time in its header anyway). The transfer count, Board and its
+// stop name, Bus, Off, closed-stop notes, the last walk and Arrive are never
+// dropped.
 function dropRank(x) {
   if (x.k === 'walkalt') return -2;
   if (x.k === 'alt') return -1;
   if (x.k === 'to') return x.n === 0 ? 2 : x.n === x.of - 1 ? 1 : 0;
+  if (x.k === 'offname') return 2.5;
   if (x.k === 'leave') return 3;
   return Infinity;
 }
@@ -282,6 +349,13 @@ export function chooseItinerary(its, mode, t) {
   // "b is at least as good on time" for the walking rule.
   const asGood = mode === 'arrive' ? (b, a) => leave(b) >= leave(a) : (b, a) => arr(b) <= arr(a);
   const fair = (pool) => pool.filter((a) => !pool.some((b) => b !== a && asGood(b, a) && w.get(b) < w.get(a) - WALK_SLACK));
+  // First bus departure. "Next bus" is the first one strictly after the
+  // chosen trip's first bus, from a trip leaving no earlier; "Earlier bus"
+  // (arrive-by) the last one strictly before it, from a trip leaving no later.
+  const dep = (it) => {
+    const l = (it.legs || []).find(isTransit);
+    return l?.startTime ? toSecs(l.startTime) : null;
+  };
   let chosen;
   if (mode === 'arrive') {
     const ok = list.filter((it) => arr(it) <= t);
@@ -290,16 +364,18 @@ export function chooseItinerary(its, mode, t) {
     chosen = pool
       .filter((it) => leave(it) >= latest - XFER_SLACK)
       .sort((a, b) => xf(a) - xf(b) || leave(b) - leave(a) || w.get(a) - w.get(b) || arr(b) - arr(a))[0];
-    const earlier = list.filter((it) => leave(it) < leave(chosen)).sort((a, b) => leave(b) - leave(a))[0];
-    return { chosen, other: earlier ? `Earlier: ${hhmm(leave(earlier))}` : null };
+    const c0 = dep(chosen);
+    const earlier = c0 === null ? null : list.filter((it) => dep(it) !== null && dep(it) < c0 && leave(it) <= leave(chosen)).sort((a, b) => dep(b) - dep(a))[0];
+    return { chosen, other: earlier ? `Earlier bus ${hhmm(dep(earlier))}` : null };
   }
   const pool = fair(list);
   const fastest = Math.min(...pool.map(arr));
   chosen = pool
     .filter((it) => arr(it) <= fastest + XFER_SLACK)
     .sort((a, b) => xf(a) - xf(b) || arr(a) - arr(b) || w.get(a) - w.get(b) || leave(b) - leave(a))[0];
-  const next = list.filter((it) => leave(it) > leave(chosen)).sort((a, b) => leave(a) - leave(b))[0];
-  return { chosen, other: next ? `Next: ${hhmm(leave(next))}` : null };
+  const c0 = dep(chosen);
+  const next = c0 === null ? null : list.filter((it) => dep(it) !== null && dep(it) > c0 && leave(it) >= leave(chosen)).sort((a, b) => dep(a) - dep(b))[0];
+  return { chosen, other: next ? `Next bus ${hhmm(dep(next))}` : null };
 }
 
 // Stops (and routes) a rider actually uses: where they board and alight.
@@ -358,7 +434,7 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
   }
 
   const legs = chosen.legs || [];
-  // `next` stays "Next:"/"Earlier:". A walk that lost but is a real
+  // `next` stays "Next bus"/"Earlier bus". A walk that lost but is a real
   // alternative (gets there at most 10 min after the bus; arrive-by: leaves
   // at most 10 min before it) is an optional last line instead.
   const walkLine = w && (mode === 'arrive' ? w.leave >= busLeave - WALK_ALT : w.arr <= busArr + WALK_ALT);
