@@ -1,3 +1,13 @@
 <strings>
     <string id="AppName">LTC Trip</string>
+    <string id="N1">Place 1 name</string>
+    <string id="A1">Place 1 address</string>
+    <string id="N2">Place 2 name</string>
+    <string id="A2">Place 2 address</string>
+    <string id="N3">Place 3 name</string>
+    <string id="A3">Place 3 address</string>
+    <string id="N4">Place 4 name</string>
+    <string id="A4">Place 4 address</string>
+    <string id="N5">Place 5 name</string>
+    <string id="A5">Place 5 address</string>
 </strings>

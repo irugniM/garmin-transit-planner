@@ -7,4 +7,5 @@ workers_dev = true
 # Secrets (never in this file):
 #   wrangler secret put TOKEN        shared token the watch sends as k=
 #   wrangler secret put HOME_LATLON  "lat,lon" of home
+#   wrangler secret put PLACES       optional private list, JSON [{"n","lat","lon"}]
 # For local `wrangler dev`, put the same names in .dev.vars (git-ignored).

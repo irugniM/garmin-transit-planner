@@ -12,7 +12,7 @@ import Toybox.WatchUi;
 (:debug)
 module Debug {
     var fake = false;
-    const DEMO_COUNT = 24;
+    const DEMO_COUNT = 28;
     // Arrow demos: fake compass heading (radians; null = none), and the
     // Arrow setting they show (On, except the "Arrow Off" demo).
     var arrowDemo = false;
@@ -27,20 +27,30 @@ module Debug {
         return arrowDemo ? head : real;
     }
 
+    // Debug builds: GPS quality letter after the distance row
+    // ("~130m to stop P"): N none, L last known, P poor, U usable, G good.
+    function qualityTag(text as String) as String {
+        var q = Gps.quality;
+        var c = q >= Position.QUALITY_GOOD ? "G" : q == Position.QUALITY_USABLE ? "U" :
+            q == Position.QUALITY_POOR ? "P" : q == Position.QUALITY_LAST_KNOWN ? "L" : "N";
+        return text + " " + c;
+    }
+
     function arrowOn(real as Boolean) as Boolean {
         return arrowDemo ? arrowSet : real;
     }
 
     function menuItems(base as Array) as Array {
-        return base.addAll([["Demo screens", "Demo"], [fake ? "Fake GPS: on" : "Fake GPS: off", "Fake GPS"]]);
+        return base.addAll([[["Demo screens", "Demo"], MenuView.A_DEBUG, 0], [[fake ? "Fake GPS: on" : "Fake GPS: off", "Fake GPS"], MenuView.A_DEBUG, 1]]);
     }
 
     // i counts from the first debug item.
     function select(i as Number) {
         if (i == 0) {
-            return new TripView(TripView.MODE_DEMO, "school");
+            return new TripView(TripView.MODE_DEMO, Places.school());
         }
         fake = !fake;
+        Places.changed();
         System.println("LTCTrip: fake GPS " + (fake ? "on" : "off"));
         return null;
     }
@@ -50,9 +60,9 @@ module Debug {
         return {
             "v" => 1, "ok" => true, "leave" => t + leaveIn, "arr" => t + leaveIn + 1500,
             "rt" => false, "xfers" => 1,
-            "lines" => ["Leave 08:01", "1 transfer", "Walk 1m to #1143", "Masonville Pl 4", "Bus 13A 08:02", "to White Oaks Mall",
-                "Off #509 08:11", "Delaware Hall SB", "Walk 2m to #1173", "Talbot College", "Bus 27 08:15", "to Capulet Lane",
-                "Off #1647 08:23", "Sarnia/Western WB", "Temp stop 130m W", "Walk 3m", "Arrive 08:26"],
+            "lines" => ["Leave 08:01", "1 transfer", "Walk 1 min to #1143", "Masonville Pl 4", "Bus 13A 08:02", "to White Oaks Mall",
+                "Off #509 08:11", "Delaware Hall SB", "Walk 2 min #1173", "Talbot College", "Bus 27 08:15", "to Capulet Lane",
+                "Off #1647 08:23", "Sarnia/Western WB", "Temp stop 130m W", "Walk 3 min", "Arrive 08:26"],
             "alert" => withAlert ? "#1647 closed: temp stop 130m W" : null,
             "next" => "Next bus 08:14"
         };
@@ -66,8 +76,8 @@ module Debug {
     function arrowReply(busIn as Number) as Dictionary {
         var t = Time.now().value();
         var r = sampleReply(false, busIn - 60);
-        r["lines"] = ["Leave 08:01", "No transfer", "Walk 3m to #1222", "Natural Science", "Bus 27 08:04", "to Capulet Lane",
-            "Off #1647 08:10", "Sarnia/Western WB", "Walk 3m", "Arrive 08:13"];
+        r["lines"] = ["Leave 08:01", "No transfer", "Walk 3 min to #1222", "Natural Science", "Bus 27 08:04", "to Capulet Lane",
+            "Off #1647 08:10", "Sarnia/Western WB", "Walk 3 min", "Arrive 08:13"];
         r["pts"] = { "s" => [STOP[0], STOP[1]], "t" => t + busIn, "d" => [SCHOOL[0], SCHOOL[1]] };
         return r;
     }
@@ -108,7 +118,7 @@ module Debug {
         v.reply = null;
         v.scroll = 0;
         v.mode = TripView.MODE_DEMO;
-        v.dest = "school";
+        v.dest = Places.school();
         var name = "";
         if (i == 0) {
             name = "waiting for GPS";
@@ -130,7 +140,7 @@ module Debug {
             v.scroll = 9;
         } else if (i == 4) {
             name = "result, leave now, no alert, home";
-            v.dest = "home";
+            v.dest = Places.home();
             v.reply = sampleReply(false, 20);
             v.gotAt = Time.now().value();
             v.state = TripView.S_OK;
@@ -149,6 +159,38 @@ module Debug {
             name = "worker err";
             v.err = "No trips found";
             v.state = TripView.S_ERR;
+        } else if (i == 24) {
+            name = "last-known fix: ~distance, outlined arrow";
+            arrowDemo = true;
+            arrowSet = true;
+            head = 0;
+            Gps.pos = [STOP[0] - 0.00162d, STOP[1]];
+            Gps.quality = Position.QUALITY_LAST_KNOWN;
+            v.reply = arrowReply(600);
+            v.gotAt = Time.now().value();
+            v.state = TripView.S_OK;
+        } else if (i == 26 || i == 27) {
+            // Real-watch case: poor first fix. 26: ~180m, outlined arrow.
+            // 27: within 30 m of the stop but poor, so no "at stop" dot.
+            name = i == 26 ? "poor fix: ~distance, outlined arrow" : "poor fix 10 m from stop: no dot, ~10m";
+            arrowDemo = true;
+            arrowSet = true;
+            head = 300 * Math.PI / 180.0;
+            Gps.pos = i == 26 ? [STOP[0] - 0.00162d, STOP[1]] : [STOP[0] - 0.00009d, STOP[1]];
+            Gps.quality = Position.QUALITY_POOR;
+            v.reply = arrowReply(600);
+            v.gotAt = Time.now().value();
+            v.state = TripView.S_OK;
+        } else if (i == 25) {
+            name = "You're here, Arrow On: dot, no extra line";
+            arrowDemo = true;
+            arrowSet = true;
+            head = 0;
+            Gps.pos = [SCHOOL[0] + 0.0001d, SCHOOL[1]];
+            Gps.quality = Position.QUALITY_GOOD;
+            v.reply = { "v" => 1, "ok" => true, "leave" => Time.now().value(), "lines" => ["You're here"], "pts" => { "d" => [SCHOOL[0], SCHOOL[1]] } };
+            v.gotAt = Time.now().value();
+            v.state = TripView.S_OK;
         } else if (i >= 15) {
             var c = arrowCase(i - 15);
             name = c[0];
@@ -169,7 +211,7 @@ module Debug {
             v.state = TripView.S_PING_OK;
         }
         var st = v.arrowWanted() ? Arrow.state(v.reply, Time.now().value()) : null;
-        System.println("LTCTrip demo " + i + ": " + name + " | " + (st != null ? "arrow " + st[:text] + " angle " + st[:angle] + " letter " + st[:letter] + " dot " + st[:dot] + " | " : "") + v.bodyLines().toString());
+        System.println("LTCTrip demo " + i + ": " + name + " | " + (st != null ? "arrow " + st[:text] + " angle " + st[:angle] + " letter " + st[:letter] + " dot " + st[:dot] + " rough " + st[:rough] + " | " : "") + v.bodyLines().toString());
         WatchUi.requestUpdate();
     }
 }
@@ -178,6 +220,10 @@ module Debug {
 module Debug {
     function fakePos() {
         return null;
+    }
+
+    function qualityTag(text as String) as String {
+        return text;
     }
 
     function heading(real) {

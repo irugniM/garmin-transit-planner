@@ -1,6 +1,7 @@
 import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.Math;
+import Toybox.Position;
 import Toybox.Sensor;
 import Toybox.Time;
 
@@ -11,7 +12,9 @@ import Toybox.Time;
 // The arrow sits in the top-right subscreen circle, rotated by the compass
 // heading (else the GPS heading while moving); with neither, the circle shows
 // the bearing as a compass letter, and within 30 m a dot. The distance is a
-// text row above the trip lines.
+// text row above the trip lines. Below a USABLE fix (none, last known, poor;
+// e.g. the first fix after GPS start) the distance gets a "~", the arrow is
+// only outlined, and there's no "at stop" dot.
 module Arrow {
     const NEAR = 30.0;          // metres: "at stop"
     const MIN_GPS_SPEED = 1.0;  // m/s: below this the GPS heading is noise
@@ -57,9 +60,11 @@ module Arrow {
         return deg;
     }
 
-    // { :text => distance row, :angle => degrees to rotate the arrow in the
-    // circle, :letter => compass letter (no heading), :dot => true when
-    // within 30 m }, or null when there's nothing to show.
+    // { :text => distance row (none at the destination), :angle => degrees
+    // to rotate the arrow in the circle, :letter => compass letter (no
+    // heading), :dot => true when within 30 m (USABLE fix or better only),
+    // :rough => true below USABLE ("~" distance, outlined arrow) }, or null
+    // when there's nothing to show.
     function state(reply, now as Number) {
         if (!hasPts(reply)) {
             return null;
@@ -80,17 +85,22 @@ module Arrow {
         if (target == null) {
             return null;
         }
+        // Below USABLE (no fix, last known, poor) the position can be off by
+        // 100 m or more: "~" before the distance, an outlined arrow, and no
+        // 30 m "at stop" dot.
+        var rough = Gps.quality < Position.QUALITY_USABLE;
         var m = Gps.metres(Gps.pos, target);
-        if (m <= NEAR) {
-            return { :text => label.equals("stop") ? "at stop" : "here", :dot => true };
+        if (m <= NEAR && !rough) {
+            // At the destination the reply already says "You're here".
+            return label.equals("stop") ? { :text => Debug.qualityTag("at stop"), :dot => true } : { :dot => true };
         }
         var b = Gps.bearing(Gps.pos, target);
-        var text = dist(m) + " to " + label;
+        var text = Debug.qualityTag((rough ? "~" : "") + dist(m) + " to " + label);
         var h = heading();
         if (h == null) {
-            return { :text => text, :letter => compass(b) };
+            return { :text => text, :letter => compass(b), :rough => rough };
         }
-        return { :text => text, :angle => b - h };
+        return { :text => text, :angle => b - h, :rough => rough };
     }
 
     // "45m", "180m", "1.2km", "12km".
@@ -117,7 +127,7 @@ module Arrow {
 
     // Arrow with every vertex within a of (cx, cy), rotated clockwise by deg
     // (0 = straight up = ahead).
-    function draw(dc as Graphics.Dc, cx as Float, cy as Float, a as Float, deg as Float) as Void {
+    function draw(dc as Graphics.Dc, cx as Float, cy as Float, a as Float, deg as Float, outline as Boolean) as Void {
         var rad = deg * Math.PI / 180.0;
         var c = Math.cos(rad);
         var sn = Math.sin(rad);
@@ -129,7 +139,18 @@ module Arrow {
             var y = shape[i][1];
             pts.add([Math.round(cx + x * c - y * sn).toNumber(), Math.round(cy + x * sn + y * c).toNumber()]);
         }
-        dc.fillPolygon(pts);
+        if (!outline) {
+            dc.fillPolygon(pts);
+            return;
+        }
+        // Rough fix: outline only (2 px), so it reads as "not sure".
+        dc.setPenWidth(2);
+        for (var i = 0; i < pts.size(); i += 1) {
+            var p = pts[i];
+            var q = pts[(i + 1) % pts.size()];
+            dc.drawLine(p[0], p[1], q[0], q[1]);
+        }
+        dc.setPenWidth(1);
     }
 
     // The subscreen circle: [cx, cy, radius] or null. getSubscreen() gives
@@ -158,7 +179,7 @@ module Arrow {
         var a = (c[2] as Float) - MARGIN - 1;
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         if (st[:angle] != null) {
-            draw(dc, cx, cy, a, st[:angle] as Float);
+            draw(dc, cx, cy, a, st[:angle] as Float, st[:rough] == true);
         } else if (st[:letter] != null) {
             dc.drawText(cx.toNumber(), cy.toNumber(), Graphics.FONT_MEDIUM, st[:letter] as String,
                 Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
@@ -169,7 +190,7 @@ module Arrow {
 
     // Distance row at y, left-aligned in the row's span. True when drawn.
     function drawRow(dc as Graphics.Dc, y as Number, font, indent as Number, st) as Boolean {
-        if (st == null) {
+        if (st == null || st[:text] == null) {
             return false;
         }
         var h = dc.getFontHeight(font);

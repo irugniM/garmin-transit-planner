@@ -36,7 +36,7 @@ function checkBoarding(lines) {
     let j = i - 1;
     while (j >= i - 2 && j >= 0 && !/^(Walk|Board at|Off|Bus|Leave|No transfer|\d+ transfers?$)/.test(lines[j])) j--;
     const prev = lines[j] || '';
-    assert.ok(/^(Walk \d+m to |Board at |Off )/.test(prev), `no boarding stop before "${l}" in ${JSON.stringify(lines)}`);
+    assert.ok(/^(Walk \d+ min( to)? (#\w+|stop)$|Walk \d+ min$|Board at |Off )/.test(prev), `no boarding stop before "${l}" in ${JSON.stringify(lines)}`);
   });
   assert.equal(lines.filter((l) => /^Bus /.test(l)).length, lines.filter((l) => /^Off /.test(l)).length);
 }
@@ -60,9 +60,9 @@ test('trim: to school with a transfer and a closure alert at the stop you get of
   assert.equal(r.xfers, 1);
   assert.equal(r.rt, false);
   assert.deepEqual(r.lines, [
-    'Leave 08:01', '1 transfer', 'Walk 1m to #1143', 'Masonville Pl 4', 'Bus 13A 08:02', 'to White Oaks Mall', 'Off #509 08:11',
-    'Delaware Hall SB', 'Walk 2m to #1173', 'Talbot College', 'Bus 27 08:15', 'to Capulet Lane', 'Off #1647 08:23',
-    'Sarnia/Western WB', 'Temp stop 130m W', 'Walk 3m', 'Arrive 08:26',
+    'Leave 08:01', '1 transfer', 'Walk 1 min #1143', 'Masonville Pl 4', 'Bus 13A 08:02', 'to White Oaks Mall', 'Off #509 08:11',
+    'Delaware Hall SB', 'Walk 2 min #1173', 'Talbot College', 'Bus 27 08:15', 'to Capulet Lane', 'Off #1647 08:23',
+    'Sarnia/Western WB', 'Temp stop 130m W', 'Walk 3 min', 'Arrive 08:26',
   ]);
   assert.equal(r.alert, '#1647 closed: temp stop 130m W');
   assert.equal(r.next, null);
@@ -74,8 +74,8 @@ test('trim: to school with a transfer and a closure alert at the stop you get of
 test('trim: from school, transfer at a different stop, Express headsign', () => {
   const r = trimPlan(only('school_to_masonville_1600', 0), { mode: 'depart', t: at('2026-10-08T16:00:00-04:00'), alerts: ALERTS });
   checkShape(r);
-  assert.deepEqual(r.lines.slice(0, 4), ['Leave 16:04', '1 transfer', 'Walk 1m to #1646', 'Sarnia/Western EB']);
-  assert.deepEqual(r.lines.slice(r.lines.indexOf('Walk 2m to #1512'), r.lines.indexOf('Walk 2m to #1512') + 2), ['Walk 2m to #1512', 'Richmond/Univ NB']);
+  assert.deepEqual(r.lines.slice(0, 4), ['Leave 16:04', '1 transfer', 'Walk 1 min #1646', 'Sarnia/Western EB']);
+  assert.deepEqual(r.lines.slice(r.lines.indexOf('Walk 2 min #1512'), r.lines.indexOf('Walk 2 min #1512') + 2), ['Walk 2 min #1512', 'Richmond/Univ NB']);
   assert.ok(r.lines.includes('to Masonville Mall'));
   // UNIVRIC1 has a detour alert for route 27 (alighting stop of leg 1).
   assert.equal(r.alert, '#1818 detour: temp stop 2 poles S');
@@ -112,7 +112,7 @@ test('trim: arrive-by picks a late leave that arrives in time; same-stop transfe
   assert.equal(hhmm(r.leave), '12:11');
   assert.equal(r.xfers, 1);
   // Walk to the first stop and the final walk; none at the same-stop transfer.
-  assert.deepEqual(r.lines.filter((l) => l.startsWith('Walk')), ['Walk 1m to #1222', 'Walk 3m']);
+  assert.deepEqual(r.lines.filter((l) => l.startsWith('Walk')), ['Walk 1 min #1222', 'Walk 3 min']);
   assert.ok(!r.lines.some((l) => l.startsWith('Board')), 'Off #1521 already names the transfer stop');
   // ...and its name line is now the boarding stop's, so it is must-keep.
   assert.deepEqual(r.lines.slice(6, 9), ['Off #1521 12:16', 'Richmo/Winderme SB', 'Bus 90 12:19']);
@@ -153,7 +153,7 @@ test('walk-only itinerary', () => {
     startTime: '2026-10-08T12:00:00Z', endTime: '2026-10-08T12:09:00Z',
     legs: [{ mode: 'WALK', duration: 540, startTime: '2026-10-08T12:00:00Z', endTime: '2026-10-08T12:09:00Z' }],
   });
-  assert.deepEqual(lines, ['Leave 08:00', 'Walk 9m', 'Arrive 08:09']);
+  assert.deepEqual(lines, ['Leave 08:00', 'Walk 9 min', 'Arrive 08:09']);
 });
 
 test('alerts: active/expired/deleted, details, camelCase', () => {
@@ -244,11 +244,11 @@ test('walk faster than the bus: show the walk, bus as a compact option', () => {
   // A walk of 20 min or less wins at the same arrival.
   const bus15 = trip('08:00', '08:15', ['9']);
   assert.deepEqual(trimPlan({ itineraries: [bus15], direct: [walkDirect(15 * 60)] }, { t: T0 }).lines, ['Walk 15 min', 'Arrive 08:15']);
-  // ...and loses when slower; within 10 min of the bus it is an optional
-  // last line, `next` keeps the next bus.
+  // ...and loses when slower; within 10 min of the bus it is two optional
+  // last lines, `next` keeps the next bus.
   const slow = trimPlan({ itineraries: [trip('08:00', '08:10', ['9']), trip('08:20', '08:30', ['9'])], direct: [walkDirect(15 * 60)] }, { t: T0 });
   assert.equal(slow.lines[0], 'Leave 08:00');
-  assert.equal(slow.lines.at(-1), 'Walk 15m arr 08:15');
+  assert.deepEqual(slow.lines.slice(-2), ['Or walk 15 min', 'arr 08:15']);
   assert.equal(slow.next, 'Next bus 08:20');
   // Arrive-by, short walk: wins when you can leave no earlier than for the bus.
   const by = at('2026-10-08T08:30:00-04:00');
@@ -266,12 +266,12 @@ test('long walks (over 20 min) win only when 15 min faster or no bus within 90 m
   let r = trimPlan(tq, { t: T0, alerts: ALERTS });
   checkShape(r);
   assert.equal(r.lines[0], 'Leave 08:10');
-  assert.deepEqual(r.lines.slice(-2), ['Arrive 08:27', 'Walk 27m arr 08:27']);
+  assert.deepEqual(r.lines.slice(-3), ['Arrive 08:27', 'Or walk 27 min', 'arr 08:27']);
   assert.equal(r.next, 'Next bus 08:30');
   // 6 min faster is not enough.
   tq.direct = [walkDirect(21 * 60)];
   r = trimPlan(tq, { t: T0 });
-  assert.equal(r.lines.at(-1), 'Walk 21m arr 08:21');
+  assert.deepEqual(r.lines.slice(-2), ['Or walk 21 min', 'arr 08:21']);
   assert.equal(r.next, 'Next bus 08:30');
   // More than 10 min after the bus: not a real alternative, no walk line.
   tq.direct = [walkDirect(38 * 60)];
@@ -279,7 +279,7 @@ test('long walks (over 20 min) win only when 15 min faster or no bus within 90 m
   assert.equal(r.lines.at(-1), 'Arrive 08:27');
   assert.equal(r.next, 'Next bus 08:30');
   tq.direct = [walkDirect(37 * 60)];
-  assert.equal(trimPlan(tq, { t: T0 }).lines.at(-1), 'Walk 37m arr 08:37');
+  assert.deepEqual(trimPlan(tq, { t: T0 }).lines.slice(-2), ['Or walk 37 min', 'arr 08:37']);
   // 15 min faster (or more) wins.
   const bus50 = trip('08:05', '08:50', ['9']);
   r = trimPlan({ itineraries: [bus50], direct: [walkDirect(35 * 60)] }, { t: T0 });
@@ -292,7 +292,7 @@ test('long walks (over 20 min) win only when 15 min faster or no bus within 90 m
   assert.deepEqual(trimPlan({ itineraries: [bus931], direct: [walkDirect(85 * 60)] }, { t: T0 }).lines, ['Walk 85 min', 'Arrive 09:25']);
   r = trimPlan({ itineraries: [bus929], direct: [walkDirect(85 * 60)] }, { t: T0 });
   assert.equal(r.lines[0], 'Leave 08:50');
-  assert.equal(r.lines.at(-1), 'Walk 85m arr 09:25');
+  assert.deepEqual(r.lines.slice(-2), ['Or walk 85 min', 'arr 09:25']);
   assert.equal(r.next, null);
   // Night: first bus in the morning, so a long walk is the answer.
   const night = at('2026-10-08T02:00:00-04:00');
@@ -308,14 +308,14 @@ test('long walks (over 20 min) win only when 15 min faster or no bus within 90 m
   r = trimPlan(arr, { mode: 'arrive', t });
   checkShape(r);
   assert.equal(hhmm(r.leave), '12:09');
-  assert.equal(r.lines.at(-1), 'Walk 45m lv 12:15');
+  assert.deepEqual(r.lines.slice(-2), ['Or walk 45 min', 'lv 12:15']);
   assert.equal(r.next, 'Earlier bus 12:04');
   arr.direct = [walkDirect(36 * 60, t - 36 * 60)]; // leave 12:24
   r = trimPlan(arr, { mode: 'arrive', t });
   assert.deepEqual(r.lines, ['Walk 36 min', 'Arrive 13:00']);
   assert.equal(r.next, 'Bus: leave 12:09');
-  // Every walk note fits; it is dropped first when space runs out (before
-  // the Direct option).
+  // Every walk note fits; its two lines are dropped first, together, when
+  // space runs out (before the Direct option).
   for (const m of [1, 9, 21, 59, 90]) {
     const x = trimPlan({ itineraries: [trip('08:00', '08:05', ['9'])], direct: [walkDirect(m * 60)] }, { t: T0 });
     checkShape(x);
@@ -323,7 +323,7 @@ test('long walks (over 20 min) win only when 15 min faster or no bus within 90 m
   const fast = trip('05:40', '06:05', ['10', '27']);
   const late = trip('05:58', '06:16', ['9']);
   const full = trimPlan({ itineraries: [fast, late], direct: [walkDirect(34 * 60, at('2026-10-08T05:40:00-04:00'))] }, { t: at('2026-10-08T05:40:00-04:00') });
-  assert.deepEqual(full.lines.slice(-4), ['Arrive 06:05', 'Direct 9 05:58', 'arr 06:16', 'Walk 34m arr 06:14']);
+  assert.deepEqual(full.lines.slice(-5), ['Arrive 06:05', 'Direct 9 05:58', 'arr 06:16', 'Or walk 34 min', 'arr 06:14']);
   const less = trimPlan({ itineraries: [fast, late], direct: [walkDirect(34 * 60, at('2026-10-08T05:40:00-04:00'))] },
     { t: at('2026-10-08T05:40:00-04:00'), maxBytes: Buffer.byteLength(JSON.stringify(full)) - 1 });
   assert.deepEqual(less.lines.slice(-3), ['Arrive 06:05', 'Direct 9 05:58', 'arr 06:16']);
@@ -335,7 +335,8 @@ test('bus trip with a slower walk and no later bus mentions the walk', () => {
   tq.direct = [walkDirect(40 * 60)];
   const r = trimPlan(tq, { t: T0 });
   checkShape(r);
-  assert.equal(r.next, 'Walk 40m arr 08:40');
+  assert.equal(r.next, null);
+  assert.deepEqual(r.lines.slice(-2), ['Or walk 40 min', 'arr 08:40']);
 });
 
 test('equal arrival: fewer transfers win unless the direct trip walks over 10 min more', () => {
@@ -347,13 +348,13 @@ test('equal arrival: fewer transfers win unless the direct trip walks over 10 mi
   let r = trimPlan({ itineraries: [direct22, viaTransfer] }, { t: at('2026-10-08T16:00:00-04:00') });
   checkShape(r);
   assert.equal(r.xfers, 1, '11 min more walking: the transfer trip is intended');
-  assert.deepEqual(r.lines.slice(-2), ['Direct 9 16:24', 'arr 16:44 walk 22m']);
+  assert.deepEqual(r.lines.slice(-3), ['Direct 9 16:24', 'arr 16:44', 'walk 22 min']);
   // 9 min more walking (under 10): the direct trip wins.
   const direct20 = walkTrip('16:11', [{ walk: 780 }, { ride: 780, route: '9' }, { walk: 420 }]);
   assert.equal(viaTransfer.endTime, direct20.endTime);
   r = trimPlan({ itineraries: [direct20, viaTransfer] }, { t: at('2026-10-08T16:00:00-04:00') });
   assert.equal(r.xfers, 0);
-  assert.equal(r.lines[2], 'Walk 13m to #1');
+  assert.equal(r.lines[2], 'Walk 13 min to #1');
 });
 
 test('two transfers: every Bus and Off kept, ends with Off, Walk, Arrive', () => {
@@ -361,10 +362,10 @@ test('two transfers: every Bus and Off kept, ends with Off, Walk, Arrive', () =>
   checkShape(r);
   assert.equal(r.xfers, 2);
   assert.deepEqual(r.lines, [
-    'Leave 08:06', '2 transfers', 'Walk 1m to #1788', 'Trafal/Atkinson WB', 'Bus 2A 08:07', 'to Natural Science',
-    'Off #538 08:23', 'Dundas/Adelaide WB', 'Walk 2m to #28', 'Adelaide/Dundas SB', 'Bus 92 08:25', 'Victoria Hosptial',
+    'Leave 08:06', '2 transfers', 'Walk 1 min #1788', 'Trafal/Atkinson WB', 'Bus 2A 08:07', 'to Natural Science',
+    'Off #538 08:23', 'Dundas/Adelaide WB', 'Walk 2 min to #28', 'Adelaide/Dundas SB', 'Bus 92 08:25', 'Victoria Hosptial',
     'Off #2284 08:35', 'Victoria/Zone A EB', 'Bus 24 08:39', 'to Talbot Village', 'Off #1997 08:56', 'Westmount Mall 1',
-    'Walk 3m', 'Arrive 08:59',
+    'Walk 3 min', 'Arrive 08:59',
   ]);
   checkBoarding(r.lines);
   const bytes = Buffer.byteLength(JSON.stringify(r));
@@ -383,8 +384,8 @@ test('over budget: drops headsigns (middle first), Off stop names, then Leave, n
   assert.ok(r1.lines.includes('Westmount Mall 1'), 'Off names go after the headsigns');
   const r2 = trimPlan(tq, { t, maxBytes: 200 });
   assert.deepEqual(r2.lines, [
-    '2 transfers', 'Walk 1m to #1788', 'Trafal/Atkinson WB', 'Bus 2A 08:07', 'Off #538 08:23', 'Walk 2m to #28', 'Adelaide/Dundas SB',
-    'Bus 92 08:25', 'Off #2284 08:35', 'Victoria/Zone A EB', 'Bus 24 08:39', 'Off #1997 08:56', 'Walk 3m', 'Arrive 08:59',
+    '2 transfers', 'Walk 1 min #1788', 'Trafal/Atkinson WB', 'Bus 2A 08:07', 'Off #538 08:23', 'Walk 2 min to #28', 'Adelaide/Dundas SB',
+    'Bus 92 08:25', 'Off #2284 08:35', 'Victoria/Zone A EB', 'Bus 24 08:39', 'Off #1997 08:56', 'Walk 3 min', 'Arrive 08:59',
   ]);
   checkBoarding(r2.lines);
 
@@ -419,7 +420,7 @@ test('boarding stop always shown: no walk leg, split walk legs, stop-less walk e
     legs: [{ ...w, duration: 100, to: { name: 'corner' } }, { ...w, duration: 140, from: { name: 'corner' } }, ...base.legs.slice(1)],
   };
   lines = itineraryLines(split);
-  assert.equal(lines[2], 'Walk 4m to #1142');
+  assert.equal(lines[2], 'Walk 4 min #1142');
   checkBoarding(lines);
   // Zero-length walk: still names the stop.
   lines = itineraryLines({ ...base, legs: [{ ...w, duration: 0 }, ...base.legs.slice(1)] });
@@ -520,19 +521,19 @@ test('closed boarding and Off stops get a must-keep temp-stop line', () => {
   checkShape(r);
   checkBoarding(r.lines);
   assert.deepEqual(r.lines, [
-    'Leave 08:01', '1 transfer', 'Walk 1m to #1143', 'Masonville Pl 4', 'Closed: see alert', 'Bus 13A 08:02', 'to White Oaks Mall',
-    'Off #509 08:11', 'Delaware Hall SB', 'Walk 2m to #1173', 'Talbot College', 'Use Althouse', 'Bus 27 08:15', 'to Capulet Lane',
-    'Off #1647 08:23', 'Sarnia/Western WB', 'Temp stop 130m W', 'Walk 3m', 'Arrive 08:26',
+    'Leave 08:01', '1 transfer', 'Walk 1 min #1143', 'Masonville Pl 4', 'Closed: see alert', 'Bus 13A 08:02', 'to White Oaks Mall',
+    'Off #509 08:11', 'Delaware Hall SB', 'Walk 2 min #1173', 'Talbot College', 'Use Althouse', 'Bus 27 08:15', 'to Capulet Lane',
+    'Off #1647 08:23', 'Sarnia/Western WB', 'Temp stop 130m W', 'Walk 3 min', 'Arrive 08:26',
   ]);
   // School -> Masonville: board #1646 on route 27 (the route 9-only closure
   // there is ignored), detour at #1818 adds nothing, get off at closed #1143.
   r = trimPlan(only('school_to_masonville_1600', 0), { t: at('2026-10-08T16:00:00-04:00'), alerts: CLOSURES });
   checkShape(r);
   checkBoarding(r.lines);
-  assert.deepEqual(r.lines.slice(0, 5), ['Leave 16:04', '1 transfer', 'Walk 1m to #1646', 'Sarnia/Western EB', 'Temp 2 poles E']);
+  assert.deepEqual(r.lines.slice(0, 5), ['Leave 16:04', '1 transfer', 'Walk 1 min #1646', 'Sarnia/Western EB', 'Temp 2 poles E']);
   assert.equal(r.lines.filter((l) => l === 'Temp 2 poles E').length, 1);
   assert.ok(!r.lines.some((l) => /pole S/.test(l)), 'detours add no line');
-  assert.deepEqual(r.lines.slice(-3), ['Closed: see alert', 'Walk 1m', 'Arrive 16:25']);
+  assert.deepEqual(r.lines.slice(-3), ['Closed: see alert', 'Walk 1 min', 'Arrive 16:25']);
   // Never dropped when space runs out (headsigns and Leave go first).
   const tight = trimPlan(only('masonville_to_school_0800', 0), { t: at('2026-10-08T08:00:00-04:00'), alerts: CLOSURES, maxBytes: 100 });
   for (const l of ['Masonville Pl 4', 'Closed: see alert', 'Talbot College', 'Use Althouse', 'Temp stop 130m W']) assert.ok(tight.lines.includes(l), l);
@@ -589,7 +590,7 @@ test('choice: a long first walk does not beat a normal trip that is as fast with
   assert.equal(hhmm(toSecs(normal.endTime)), hhmm(toSecs(longWalk.endTime)));
   let r = trimPlan({ itineraries: [longWalk, normal] }, { t: T0 });
   assert.equal(r.xfers, 1, 'the normal trip wins despite the transfer');
-  assert.equal(r.lines[2], 'Walk 3m to #1');
+  assert.equal(r.lines[2], 'Walk 3 min to #1');
   // ...also when the long walk arrives a little later.
   const longLater = walkTrip('07:55', [{ walk: 1500 }, { ride: 1200, route: '9' }, { walk: 120 }]);
   assert.equal(trimPlan({ itineraries: [longLater, normal] }, { t: T0 }).xfers, 1);
@@ -683,20 +684,20 @@ test('headsigns: parentheses stripped, Downtown -> Dtwn; a line repeating the on
 test('stop names: under every boarding line, closure note after the name, empty names skipped', () => {
   const base = fx('masonville_to_school_0800').itineraries[1]; // WALK, BUS 93 #1142>#2003, WALK
   let lines = itineraryLines(base);
-  assert.deepEqual(lines.slice(2, 7), ['Walk 4m to #1142', 'Masonville Pl 3', 'Bus 93 08:14', 'to White Oaks Mall', 'Off #2003 08:23']);
+  assert.deepEqual(lines.slice(2, 7), ['Walk 4 min #1142', 'Masonville Pl 3', 'Bus 93 08:14', 'to White Oaks Mall', 'Off #2003 08:23']);
   assert.equal(lines[7], 'Western/Sarnia SB');
   // Name missing or just the code: no name line.
   const bus = base.legs[1];
   for (const name of [undefined, '', '#1142', '1142 - #1142']) {
     const it = { ...base, legs: [base.legs[0], { ...bus, from: { ...bus.from, name }, to: { ...bus.to, name } }, base.legs[2]] };
     lines = itineraryLines(it);
-    assert.deepEqual(lines.slice(2, 4), ['Walk 4m to #1142', 'Bus 93 08:14'], String(name));
+    assert.deepEqual(lines.slice(2, 4), ['Walk 4 min #1142', 'Bus 93 08:14'], String(name));
     assert.equal(lines.length, 8, JSON.stringify(lines));
   }
   // Closed boarding stop: name, then the temp-stop note.
   const r = trimPlan(only('masonville_to_school_0800', 0), { t: T0, alerts: CLOSURES });
-  const i = r.lines.indexOf('Walk 2m to #1173');
-  assert.deepEqual(r.lines.slice(i, i + 3), ['Walk 2m to #1173', 'Talbot College', 'Use Althouse']);
+  const i = r.lines.indexOf('Walk 2 min #1173');
+  assert.deepEqual(r.lines.slice(i, i + 3), ['Walk 2 min #1173', 'Talbot College', 'Use Althouse']);
   // Off names are dropped after headsigns and before Leave.
   const full = trimPlan(only('masonville_to_school_0800', 0), { t: T0 });
   const noTo = trimPlan(only('masonville_to_school_0800', 0), { t: T0, maxBytes: Buffer.byteLength(JSON.stringify(full)) - 40 });
@@ -731,7 +732,7 @@ test('Next bus / Earlier bus: first bus departure, never the chosen trip\'s own 
 
 // ---- code-less stops (e.g. a train station) ----------------------------------
 
-test('stops without a code: "Off HH:MM" / "Walk Nm to stop" plus a name line; times never cut', () => {
+test('stops without a code: "Off HH:MM" / "Walk N min to stop" plus a name line; times never cut', () => {
   const base = structuredClone(fx('masonville_to_school_0800').itineraries[1]); // WALK, BUS 93, WALK
   const bus = base.legs[1];
   bus.from = { name: 'Downtown Union Station UP Express Platform', stopId: 'X:UPX1', lat: 43.6453, lon: -79.3806 };
@@ -739,8 +740,8 @@ test('stops without a code: "Off HH:MM" / "Walk Nm to stop" plus a name line; ti
   const r = trimPlan({ itineraries: [base] }, { t: T0, to: { lat: 43.00129, lon: -81.27883 } });
   checkShape(r);
   checkBoarding(r.lines);
-  const i = r.lines.findIndex((l) => l.startsWith('Walk 4m'));
-  assert.equal(r.lines[i], 'Walk 4m to stop');
+  const i = r.lines.findIndex((l) => l.startsWith('Walk 4 min'));
+  assert.equal(r.lines[i], 'Walk 4 min to stop');
   assert.match(r.lines[i + 1], /^Dtwn Union/);
   const off = r.lines.findIndex((l) => l.startsWith('Off '));
   assert.equal(r.lines[off], 'Off 08:23');
@@ -763,15 +764,17 @@ test('pts: first boarding stop, its departure, and the destination (5 dp)', () =
   assert.deepEqual(r.pts, {
     s: [Math.round(leg.from.lat * 1e5) / 1e5, Math.round(leg.from.lon * 1e5) / 1e5],
     t: toSecs(leg.startTime),
+    k: `${leg.routeShortName}@${toSecs(leg.scheduledStartTime || leg.startTime)}`,
     d: [43.00129, -81.27883],
   });
   assert.equal(hhmm(r.pts.t), '08:02');
+  assert.match(r.pts.k, /^\w+@\d{10}$/);
   // Walk-only and "You're here": destination only.
   assert.deepEqual(trimPlan({ itineraries: [], direct: [walkDirect(300)] }, { t: T0, to }).pts, { d: [43.00129, -81.27883] });
   assert.deepEqual(hereReply(T0, to).pts, { d: [43.00129, -81.27883] });
   // Nothing known: null; old callers without `to` still get the stop.
   assert.equal(hereReply(T0).pts, null);
-  assert.deepEqual(Object.keys(trimPlan(only('masonville_to_school_0800', 0), { t: T0 }).pts), ['s', 't']);
+  assert.deepEqual(Object.keys(trimPlan(only('masonville_to_school_0800', 0), { t: T0 }).pts), ['s', 't', 'k']);
   // Synthetic stops without coordinates: no s.
   assert.deepEqual(trimPlan({ itineraries: [trip('08:00', '08:10', ['9'])] }, { t: T0, to }).pts, { d: [43.00129, -81.27883] });
   // Counted in the 600 B budget: the biggest fixture reply still fits.
@@ -860,7 +863,7 @@ test('near home: a detour first walk is replaced by the straight line (2 min min
   const r = trimPlan({ itineraries: [f] }, { t: T0 });
   assert.equal(r.leave, dep - 120);
   assert.equal(r.lines[0], `Leave ${hhmm(dep - 120)}`);
-  assert.ok(r.lines.includes('Walk 2m to #9001'), r.lines.join('|'));
+  assert.ok(r.lines.includes('Walk 2 min #9001'), r.lines.join('|'));
   // Above the minimum: ~250 m straight -> ceil(250 * 1.3 / 1.2).
   const g = fixFirstWalk(detourTrip(dep, { stopM: 250, routed: 1000, walkS: 900 }), ORIGIN);
   const straight = metres(ORIGIN, north(250));

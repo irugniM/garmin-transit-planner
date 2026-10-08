@@ -40,6 +40,16 @@ function mins(secs) {
   return Math.max(1, Math.round((secs || 0) / 60));
 }
 
+// Walk minutes always say "min" (never "m", which reads as metres):
+// "Walk 3 min to #509", "Walk 3 min #1142" when "to" would pass 18
+// characters, "Walk 6 min to stop", or just "Walk 12 min" (the stop's name
+// line follows).
+function walkTo(secs, tag) {
+  const w = `Walk ${mins(secs)} min`;
+  for (const t of [`${w} to ${tag}`, tag === 'stop' ? w : `${w} ${tag}`]) if (t.length <= MAX_LINE) return t;
+  return w;
+}
+
 // "09" -> "9", "102" stays.
 export function routeLabel(leg) {
   const r = String(leg.routeShortName ?? leg.displayName ?? '?');
@@ -92,7 +102,8 @@ function legSecs(leg) {
 // Lines for one itinerary, each tagged with a kind so trimPlan can shorten
 // long trips from the middle:
 //   leave, xfer ("No transfer", "1 transfer", "2 transfers"; trips with a
-//   bus only), board ("Walk 6m to #1234" or "Board at #1234"), bus, to
+//   bus only), board ("Walk 6 min to #509", "Walk 6 min #1234" when "to"
+//   doesn't fit, or "Board at #1234"), bus, to
 //   (headsign), off, walkEnd (walk after the last bus), walk (walk-only
 //   trip), arrive, name (the boarding stop's name, right after its board
 //   line: "Sarnia/Western WB"), offname (the same for an Off stop;
@@ -124,7 +135,7 @@ export function itineraryItems(it, alerts = null) {
     const route = legRoute(leg);
     const sameStop = busNo > 0 && lastOff && from.stopId && lastOff === from.stopId;
     if (!sameStop) {
-      const board = walked && walkSecs > 0 ? `Walk ${mins(walkSecs)}m to ${stopTag(from)}` : `Board at ${stopTag(from)}`;
+      const board = walked && walkSecs > 0 ? walkTo(walkSecs, stopTag(from)) : `Board at ${stopTag(from)}`;
       out.push({ k: 'board', t: clip(board), n: busNo });
       const name = stopName(from);
       if (name) out.push({ k: 'name', t: name, n: busNo });
@@ -159,7 +170,7 @@ export function itineraryItems(it, alerts = null) {
     walked = false;
     walkSecs = 0;
   }
-  if (walked) out.push({ k: busNo ? 'walkEnd' : 'walk', t: clip(`Walk ${mins(walkSecs)}m`) });
+  if (walked) out.push({ k: busNo ? 'walkEnd' : 'walk', t: clip(`Walk ${mins(walkSecs)} min`) });
   out.push({ k: 'arrive', t: `Arrive ${hhmm(toSecs(it.endTime))}` });
   return out;
 }
@@ -338,9 +349,9 @@ export function compactItems(items, fits) {
         (r === dropRank(list[best]) && Math.abs(i - list.length / 2) < Math.abs(best - list.length / 2))) best = i;
     }
     if (best < 0) break;
-    // The alternative's two lines go together.
+    // An alternative's lines go together.
     const drop = list[best];
-    list = list.filter((x, i) => i !== best && !(drop.k === 'alt' && x.k === 'alt'));
+    list = list.filter((x, i) => i !== best && !((drop.k === 'alt' || drop.k === 'walkalt') && x.k === drop.k));
   }
   return list.map((x) => x.t);
 }
@@ -533,7 +544,9 @@ const ll = (p) => (p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number
   ? [r5(p.lat), r5(p.lon)] : null);
 
 // For the watch's arrow: { s: first boarding stop [lat, lon], t: that bus's
-// departure (unix secs), d: destination [lat, lon] }. s/t only when the
+// departure (unix secs), k: "<route>@<scheduled departure>" naming that bus
+// (the watch's auto-refresh compares it to tell "same trip, new times" from
+// "a different trip"), d: destination [lat, lon] }. s/t/k only when the
 // answer is a bus trip; null when there's nothing to point at.
 export function ptsFor(chosen, to) {
   const out = {};
@@ -542,6 +555,8 @@ export function ptsFor(chosen, to) {
   if (s && leg.startTime) {
     out.s = s;
     out.t = toSecs(leg.startTime);
+    const route = String(leg.routeShortName ?? leg.displayName ?? '?').slice(0, 8);
+    out.k = `${route}@${toSecs(leg.scheduledStartTime || leg.startTime)}`;
   }
   const d = ll(to);
   if (d) out.d = d;
@@ -591,12 +606,12 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
   }
 
   const legs = chosen.legs || [];
-  // `next` stays "Next bus"/"Earlier bus". A walk that lost but is a real
+  // `next` is only "Next bus"/"Earlier bus". A walk that lost is two
+  // optional last lines ("Or walk 25 min", "arr 16:40") when it is a real
   // alternative (gets there at most 10 min after the bus; arrive-by: leaves
-  // at most 10 min before it) is an optional last line instead.
-  const walkLine = w && (mode === 'arrive' ? w.leave >= busLeave - WALK_ALT : w.arr <= busArr + WALK_ALT);
-  let next = other;
-  if (!next && w && !walkLine) next = walkNote(w, mode);
+  // at most 10 min before it), or when there is no next bus to show.
+  const next = other;
+  const walkLine = w && (!next || (mode === 'arrive' ? w.leave >= busLeave - WALK_ALT : w.arr <= busArr + WALK_ALT));
   const reply = {
     v: 1,
     ok: true,
@@ -611,7 +626,7 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
   };
   const items = itineraryItems(chosen, alerts);
   if (reply.xfers > 0) items.push(...altItems(its, chosen, mode, t));
-  if (walkLine) items.push({ k: 'walkalt', t: walkNote(w, mode) });
+  if (walkLine) items.push(...walkNote(w, mode).map((t) => ({ k: 'walkalt', t })));
   reply.lines = compactItems(items, (lines) => byteLen({ ...reply, lines }) <= maxBytes);
   if (byteLen(reply) > hardMax) return errorReply('Trip too long');
   return reply;
@@ -619,8 +634,8 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
 
 // When the chosen trip has transfers but a one-bus trip exists (not chosen
 // because it arrives over 10 min later, or walks over 10 min more), two
-// short optional lines: "Direct 9 05:58", "arr 06:11" ("arr 16:44 walk 22m"
-// when the walking is what ruled it out).
+// short optional lines: "Direct 9 05:58", "arr 06:11" (plus "walk 22 min"
+// when the walking is what ruled it out). They are dropped together.
 function altItems(its, chosen, mode, t) {
   const one = its
     .filter((it) => it !== chosen && !cancelled(it) && it.startTime && it.endTime && (it.legs || []).filter(isTransit).length === 1)
@@ -629,14 +644,13 @@ function altItems(its, chosen, mode, t) {
   if (!one) return [];
   const leg = one.legs.find(isTransit);
   const { variant } = splitHeadsign(leg.headsign, routeLabel(leg));
-  let arr = `arr ${hhmm(toSecs(one.endTime))}`;
   const w = walkSecs(one);
-  const longer = `${arr} walk ${mins(w)}m`;
-  if (w - walkSecs(chosen) > WALK_SLACK && longer.length <= MAX_LINE) arr = longer;
-  return [
+  const out = [
     { k: 'alt', t: clip(`Direct ${variant} ${hhmm(toSecs(leg.startTime))}`) },
-    { k: 'alt', t: arr },
+    { k: 'alt', t: `arr ${hhmm(toSecs(one.endTime))}` },
   ];
+  if (w - walkSecs(chosen) > WALK_SLACK) out.push({ k: 'alt', t: `walk ${mins(w)} min` });
+  return out;
 }
 
 // Walk-only vs the chosen bus trip.
@@ -660,9 +674,10 @@ export function walkWins(w, { mode, t, busLeave, busArr }) {
   return w.arr <= busArr - LONG_WALK_GAIN || busArr > tt + BUS_HORIZON;
 }
 
-// "Walk 25m arr 16:40" / arrive-by "Walk 25m lv 07:40" (at most 18 chars).
+// The walk as an option after a bus trip, two lines that are dropped
+// together: "Or walk 25 min", "arr 16:40" (arrive-by: "lv 07:40").
 export function walkNote(w, mode) {
-  return mode === 'arrive' ? `Walk ${mins(w.dur)}m lv ${hhmm(w.leave)}` : `Walk ${mins(w.dur)}m arr ${hhmm(w.arr)}`;
+  return [`Or walk ${mins(w.dur)} min`, mode === 'arrive' ? `lv ${hhmm(w.leave)}` : `arr ${hhmm(w.arr)}`];
 }
 
 function byteLen(obj) {

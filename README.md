@@ -25,7 +25,7 @@ The top-right circle points to your stop and the top line shows how far it is.
 
 ![Main menu](docs/01-menu.png)
 
-Pick To School or To Home. Arrow On/Off is right on the menu.
+Pick To School, To Home or one of your own places. Arrow On/Off is right on the menu.
 
 ![Trip screen: leave time and transfers](docs/02-trip.png)
 ![Trip screen: stop and bus](docs/02b-trip-bus.png)
@@ -55,22 +55,47 @@ Already at your destination? It tells you instead of planning a trip.
 `GET /v1/ping` → `{"v":1,"ok":true,"t":<unix secs>}`. No token. Use it to check
 that the watch can reach the Worker at all.
 
-`GET /v1/plan?lat=<lat>&lon=<lon>&dest=home|school&mode=depart|arrive&t=<unix secs>&k=<token>`
+`POST /v1/plan` with a JSON body (what the watch sends since the destinations
+update; nothing private is in the URL):
+
+```json
+{"k":"<token>","lat":"43.02550","lon":"-81.28160","mode":"depart",
+ "dest":"school"}
+```
 
 - `lat`, `lon`: where you are now (the watch's GPS).
-- `dest`: `school` (Sarnia Rd at Western Rd, LTC stops #1646 EB / #1647 WB) or
-  `home` (read from the `HOME_LATLON` secret; never stored in this repo).
+- The destination is exactly one of:
+  - `dest`: `school` (Sarnia Rd at Western Rd, LTC stops #1646 EB / #1647 WB)
+    or `home` (read from the `HOME_LATLON` secret; never stored in this repo);
+  - `place`: an id from the private list (`PLACES` secret, below); the Worker
+    looks the coordinates up, the watch never has them before the reply;
+  - `tlat`, `tlon`: explicit coordinates (phone-settings and saved places).
 - `mode`: `depart` (default; `t` defaults to now) or `arrive` (arrive by `t`, required).
 - `k`: must equal the `TOKEN` secret.
+
+`GET /v1/plan?lat=<lat>&lon=<lon>&dest=home|school&mode=depart|arrive&t=<unix secs>&k=<token>`
+still works the same (older watch builds use it); GET takes only
+`dest=school|home`, never `place` or coordinates.
+
+`POST /v1/places` with `{"k":"<token>"}` → `{"v":1,"ok":true,"places":[{"id":"1","n":"Covent Garden"}]}`:
+names and ids only, from the `PLACES` secret (empty list when unset).
+
+`POST /v1/geocode` with `{"k":"<token>","q":"<address>"}` →
+`{"v":1,"ok":true,"lat":43.02633,"lon":-81.28005,"n":"Masonville Place"}` or
+`{"v":1,"ok":false,"err":"Address not found"}`. The address is only ever in the
+POST body (GET is refused). The Worker asks Transitous's geocoder
+(`/api/v1/geocode`, biased to London, matches within 150 km only), which
+necessarily means sending the address text to Transitous. The Worker stores
+and logs nothing; the watch keeps the result.
 
 Reply (times are America/Toronto, lines are at most 18 characters):
 
 ```json
 {"v":1,"ok":true,"leave":1791460860,"arr":1791462360,"rt":false,"xfers":1,
- "lines":["Leave 08:01","1 transfer","Walk 1m to #1143","Masonville Pl 4","Bus 13A 08:02",
-          "to White Oaks Mall","Off #509 08:11","Delaware Hall SB","Walk 2m to #1173",
+ "lines":["Leave 08:01","1 transfer","Walk 1 min to #1143","Masonville Pl 4","Bus 13A 08:02",
+          "to White Oaks Mall","Off #509 08:11","Delaware Hall SB","Walk 2 min #1173",
           "Talbot College","Bus 27 08:15","to Capulet Lane","Off #1647 08:23",
-          "Sarnia/Western WB","Temp stop 130m W","Walk 3m","Arrive 08:26"],
+          "Sarnia/Western WB","Temp stop 130m W","Walk 3 min","Arrive 08:26"],
  "alert":"#1647 closed: temp stop 130m W","next":"Next bus 08:14",
  "pts":{"s":[43.02588,-81.28161],"t":1791460920,"d":[43.00129,-81.27883]}}
 ```
@@ -81,7 +106,9 @@ Reply (times are America/Toronto, lines are at most 18 characters):
   `dest=home`, `d` is the `HOME_LATLON` secret, sent only to the watch at
   runtime. `pts` counts toward the 600 B reply budget. Older watch builds
   ignore it.
-- Stops without a code (e.g. a train station) show `Walk 6m to stop` /
+- Walk lines say `Walk N min to #1143`; when that passes 18 characters the
+  `to` goes (`Walk 12 min #1143`).
+- Stops without a code (e.g. a train station) show `Walk 6 min to stop` /
   `Board at stop` and `Off 12:43`, each with the stop's name on the next line
   (must-keep), so times are never cut.
 
@@ -101,9 +128,9 @@ Reply (times are America/Toronto, lines are at most 18 characters):
   `2 transfers` (not on walk-only or `You're here` replies).
 - If the trip has transfers and Transitous also found a single-bus trip (that
   arrives over 10 min later or walks over 10 min more), two optional lines
-  follow `Arrive`: `Direct 9 05:58`, `arr 06:16` (`arr 16:44 walk 22m` when
+  follow `Arrive`: `Direct 9 05:58`, `arr 06:16` (plus `walk 22 min` when
   walking ruled it out).
-- Every bus has a line naming where to board just before it (`Walk 1m to #1143`,
+- Every bus has a line naming where to board just before it (`Walk 1 min to #1143`,
   or `Board at #1143` when there is no walk), except a transfer at the same stop
   the previous bus left you at (its `Off #1234` line names it). Every bus has its
   `Off` line, and a trip ends with the final walk and `Arrive`.
@@ -149,13 +176,14 @@ Reply (times are America/Toronto, lines are at most 18 characters):
   first bus leaves strictly after the chosen trip's first bus (arrive-by:
   `Earlier bus HH:MM`, the last first-bus departure strictly before it).
   If the walk gets there at most 10 min after the bus (arrive-by: leaves at
-  most 10 min earlier) it is an optional last line,
-  `Walk 42m arr 13:41` (arrive-by: `Walk 42m lv 12:18`), dropped first when
-  space runs out. A slower walk only fills an empty `next`.
+  most 10 min earlier) it is two optional last lines,
+  `Or walk 42 min`, `arr 13:41` (arrive-by: `lv 12:18`), dropped together
+  first when space runs out. A slower walk only fills an empty `next`.
 
 Errors are `{"v":1,"ok":false,"err":"..."}` with HTTP 200 so the watch can show
 the text: `Bad token`, `Token not set`, `Bad params`, `Home not set`,
-`Transitous down`, `No trips found`, `Trip too long`.
+`Transitous down`, `No trips found`, `Trip too long`, `Place not found`,
+`Address not found`, `Bad address`. Bad JSON or a body over 2 KB gets HTTP 400.
 
 Alerts: the Worker reads LTC's `Alerts.json` (plain http; https on that host is
 broken), keeps a compact stop map for 60 s (Cache API plus an in-memory copy,
@@ -171,6 +199,7 @@ the feed is skipped for 30 s.
 | --- | --- |
 | `TOKEN` | Any long random string. The watch sends it as `k`. |
 | `HOME_LATLON` | `"<lat>,<lon>"` of home, e.g. `"43.0000,-81.0000"` (placeholder). |
+| `PLACES` | Optional private list, JSON `[{"n":"Name","lat":43.0,"lon":-81.0}]` (up to 20; optional `"id"`, else 1, 2, ...). Starts empty. The watch only sees names and ids. |
 
 They are set with `wrangler secret put` and never committed. For local
 `wrangler dev`, put them in `worker/.dev.vars` (git-ignored):
@@ -204,6 +233,7 @@ cd worker
 npx wrangler login              # once, opens a browser
 npx wrangler secret put TOKEN
 npx wrangler secret put HOME_LATLON
+npx wrangler secret put PLACES    # optional, e.g. []
 npx wrangler deploy             # prints https://ltctrip.<account>.workers.dev
 curl https://ltctrip.<account>.workers.dev/v1/ping
 ```
@@ -212,8 +242,21 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
 
 ### Screens and buttons
 
-- Menu: **To School**, **To Home**, **Arrow: On/Off** (toggle, saved in
-  Storage, default Off), **Test connection**. UP/DOWN move, START opens.
+- Menu: **To School**, **To Home**, then your places (phone settings, saved,
+  private list), **Save this place**, **Edit places** (once one is saved),
+  **Arrow: On/Off** (toggle, saved in Storage, default Off), **Test
+  connection**. UP/DOWN move, START opens.
+- Places, three ways (all kept on the watch; the Worker stores nothing):
+  - Phone settings (Connect IQ app → LTC Trip → Settings): up to 5 name +
+    address pairs. When they change, the watch asks the Worker to geocode each
+    new address once (`POST /v1/geocode`) and keeps the lat/lon in Storage;
+    trips then send coordinates. A bad address shows `Address not found` /
+    `Fix it in the phone app settings`.
+  - **Save this place**: waits for a GPS fix of USABLE quality or better and
+    saves it as `Place 1`.. (at most 5). **Edit places** renames (keyboard via
+    `WatchUi.TextPicker`, or a list of preset names) or deletes them.
+  - Private list: names from the `PLACES` secret, fetched at app start
+    (`POST /v1/places`); trips send the id and the Worker uses its coordinates.
 - Trip: the top shows `Leave in N min` (from the reply's `leave`), then the alert
   line (if any), the steps, and `next` (`Next bus hh:mm`). UP/DOWN scroll, START refreshes,
   BACK returns to the menu.
@@ -224,9 +267,13 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
   compass heading (`Sensor` heading, else the GPS heading while moving at
   1 m/s or more); with no heading the circle shows the bearing as a letter
   (`NE`), and within 30 m a dot. A text row above the steps gives the
-  distance: `180m to stop`, `1.2km to dest`, `at stop`. While TripView is open,
-  location events stay on (continuous, about 1 Hz) and the screen redraws
-  every second; leaving the view turns both off. With the Arrow Off the circle
+  distance: `180m to stop`, `1.2km to dest`, `at stop` (no row at the
+  destination, where the reply already says `You're here`). Below a USABLE fix
+  (none, last known, poor; e.g. the first fix after GPS start) the distance
+  reads `~130m to stop`, the arrow is only outlined, and there is no `at stop`
+  dot. Once a trip is showing, location events stay on (continuous, about
+  1 Hz) and the screen redraws every second; before that, and after leaving
+  the view, neither. With the Arrow Off the circle
   stays empty, there is no distance row, and neither continuous location nor
   the compass is used (only the one-shot fix for the request). Needs the
   `Sensor` permission for the compass.
@@ -241,8 +288,8 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
 - Test connection calls `/v1/ping` and shows `Connection OK` with the round trip
   time, or the error.
 - Debug builds only: **Demo screens** (START cycles through every screen state
-  with fake data, including nine arrow states with a fake heading: N/E/S/W, diagonal, compass
-  letter, at stop, Arrow Off, scrolled) and **Fake GPS**
+  with fake data, including arrow states with a fake heading: N/E/S/W, diagonal, compass
+  letter, at stop, Arrow Off, scrolled, last-known and poor fixes, You're here) and **Fake GPS**
   (a fixed public spot at Western University, for the simulator).
 
 Depart-now only in v1; the Worker already supports `mode=arrive`.

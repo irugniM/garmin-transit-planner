@@ -1,0 +1,32 @@
+<settings>
+    <setting propertyKey="@Properties.n1" title="@Strings.N1">
+        <settingConfig type="alphaNumeric" maxLength="20"/>
+    </setting>
+    <setting propertyKey="@Properties.a1" title="@Strings.A1">
+        <settingConfig type="alphaNumeric" maxLength="120"/>
+    </setting>
+    <setting propertyKey="@Properties.n2" title="@Strings.N2">
+        <settingConfig type="alphaNumeric" maxLength="20"/>
+    </setting>
+    <setting propertyKey="@Properties.a2" title="@Strings.A2">
+        <settingConfig type="alphaNumeric" maxLength="120"/>
+    </setting>
+    <setting propertyKey="@Properties.n3" title="@Strings.N3">
+        <settingConfig type="alphaNumeric" maxLength="20"/>
+    </setting>
+    <setting propertyKey="@Properties.a3" title="@Strings.A3">
+        <settingConfig type="alphaNumeric" maxLength="120"/>
+    </setting>
+    <setting propertyKey="@Properties.n4" title="@Strings.N4">
+        <settingConfig type="alphaNumeric" maxLength="20"/>
+    </setting>
+    <setting propertyKey="@Properties.a4" title="@Strings.A4">
+        <settingConfig type="alphaNumeric" maxLength="120"/>
+    </setting>
+    <setting propertyKey="@Properties.n5" title="@Strings.N5">
+        <settingConfig type="alphaNumeric" maxLength="20"/>
+    </setting>
+    <setting propertyKey="@Properties.a5" title="@Strings.A5">
+        <settingConfig type="alphaNumeric" maxLength="120"/>
+    </setting>
+</settings>

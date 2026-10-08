@@ -2,8 +2,9 @@ import Toybox.Application.Storage;
 import Toybox.Lang;
 import Toybox.Time;
 
-// Last good Worker reply per destination, with the time it arrived, and
-// the Arrow on/off setting.
+// Last good Worker reply per destination (key from the descriptor: school,
+// home, a<slot>, s<id>, p_<id>_<name>), with the time it arrived, and the
+// Arrow on/off setting.
 module Store {
     function save(dest as String, reply as Dictionary, at as Number) as Void {
         var clean = {};
@@ -26,9 +27,9 @@ module Store {
         return null;
     }
 
-    // Arrow on TripView (menu toggle). Default on.
+    // Arrow on TripView (menu toggle). Default Off.
     function arrowOn() as Boolean {
-        return Storage.getValue("arrow") == true;  // default Off
+        return Storage.getValue("arrow") == true;
     }
 
     function setArrow(on as Boolean) as Void {

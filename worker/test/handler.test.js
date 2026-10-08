@@ -220,7 +220,7 @@ test('near home, depart: asks 5 min earlier, straight-line first walk, missed bu
   assert.equal(r.body.ok, true);
   assert.equal(r.body.leave, NOW + 120);
   assert.equal(r.body.lines[0], 'Leave 08:02');
-  assert.ok(r.body.lines.includes('Walk 2m to #9001'));
+  assert.ok(r.body.lines.includes('Walk 2 min #9001'));
   assert.ok(r.body.lines.includes('Bus 6 08:04'));
   assert.equal(r.body.next, 'Next bus 08:12');
   assert.ok(r.bytes <= 600);
@@ -239,10 +239,179 @@ test('away from home: no shift and Transitous walk times kept', async () => {
   const r = await call(`${BASE}&dest=school`, { fetchImpl: f, env: ENV_AWAY });
   assert.equal(timeOf(f), '2026-10-08T12:00:00.000Z');
   assert.equal(r.body.leave, NOW + 60 - 420);
-  assert.ok(r.body.lines.includes('Walk 7m to #9001'));
+  assert.ok(r.body.lines.includes('Walk 7 min #9001'));
   // No home secret at all: same.
   const g = tqFetch(detourTq([NOW + 60]));
   const r2 = await call(`${BASE}&dest=school`, { fetchImpl: g, env: { TOKEN: 'test-token' } });
   assert.equal(timeOf(g), '2026-10-08T12:00:00.000Z');
   assert.equal(r2.body.leave, NOW + 60 - 420);
+});
+
+// ---- POST endpoints: plan by place id or coordinates, geocode, places --------
+// Public places only: Masonville, Western, downtown.
+
+const DOWNTOWN = { lat: 42.98365, lon: -81.24963 }; // Covent Garden Market
+const PLACES = JSON.stringify([
+  { n: 'Downtown', lat: DOWNTOWN.lat, lon: DOWNTOWN.lon },
+  { id: 'wom', n: 'White Oaks Mall', lat: 42.93208, lon: -81.22315 },
+  { n: '', lat: 1, lon: 2 }, // no name: skipped
+  { n: 'Bad', lat: 'x', lon: 2 }, // bad coordinates: skipped
+]);
+const ENV_P = { ...ENV, PLACES };
+
+async function post(path, body, { env = ENV_P, fetchImpl = fakeFetch(), now = NOW, raw = null } = {}) {
+  const req = new Request(`https://w.example${path}`, {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: raw ?? JSON.stringify(body),
+  });
+  const res = await handle(req, env, { fetchImpl, cache: null, now });
+  const text = await res.text();
+  return { status: res.status, body: JSON.parse(text), bytes: Buffer.byteLength(text), fetchImpl, text };
+}
+const ORIG = { lat: '43.02550', lon: '-81.28160' };
+const tqUrl = (f) => new URL(f.calls.find((c) => c.url.includes('/api/v5/plan')).url);
+
+test('POST plan: token in the body; school/home like GET; the GET path still works', async () => {
+  const f = fakeFetch();
+  const r = await post('/v1/plan', { k: 'test-token', ...ORIG, dest: 'school', mode: 'depart' }, { fetchImpl: f, env: { ...ENV_AWAY, PLACES } });
+  assert.equal(r.body.ok, true);
+  assert.equal(tqUrl(f).searchParams.get('toPlace'), '43.00129,-81.27883');
+  // Same answer as the GET the 6895b4a watch build sends.
+  const g = await call(`${BASE}&dest=school&mode=depart`, { env: ENV_AWAY });
+  assert.deepEqual(r.body, g.body);
+  assert.equal((await post('/v1/plan', { k: 'nope', ...ORIG, dest: 'school' })).body.err, 'Bad token');
+  assert.equal((await post('/v1/plan', { ...ORIG, dest: 'school' })).body.err, 'Bad token');
+  assert.equal((await post('/v1/plan', { k: 'test-token', ...ORIG })).body.err, 'Bad params');
+  assert.equal((await post('/v1/plan', null, { raw: 'not json' })).status, 400);
+  assert.equal((await post('/v1/plan', null, { raw: JSON.stringify({ k: 'test-token', pad: 'x'.repeat(3000) }) })).status, 400);
+});
+
+test('POST plan by coordinates (settings and saved places): pts.d is that place', async () => {
+  const f = fakeFetch();
+  const r = await post('/v1/plan', { k: 'test-token', ...ORIG, tlat: '42.98365', tlon: '-81.24963' }, { fetchImpl: f });
+  assert.equal(r.body.ok, true);
+  assert.equal(tqUrl(f).searchParams.get('toPlace'), '42.98365,-81.24963');
+  assert.deepEqual(r.body.pts.d, [42.98365, -81.24963]);
+  // Numbers work too; bad or half coordinates, or coordinates plus dest, don't.
+  assert.equal((await post('/v1/plan', { k: 'test-token', ...ORIG, tlat: 42.98365, tlon: -81.24963 })).body.ok, true);
+  for (const bad of [{ tlat: '42.9' }, { tlat: 'x', tlon: '-81.2' }, { tlat: '95', tlon: '-81.2' }, { tlat: '42.9', tlon: '-81.2', dest: 'school' }]) {
+    assert.equal((await post('/v1/plan', { k: 'test-token', ...ORIG, ...bad })).body.err, 'Bad params', JSON.stringify(bad));
+  }
+  // Near the place: "You're here" with that place in pts.d.
+  const here = await post('/v1/plan', { k: 'test-token', lat: '42.98370', lon: '-81.24970', tlat: '42.98365', tlon: '-81.24963' });
+  assert.deepEqual(here.body.lines, ["You're here"]);
+  // GET never takes a destination other than school/home.
+  const g = await call(`${BASE}&tlat=42.98365&tlon=-81.24963`);
+  assert.equal(g.body.err, 'Bad params');
+  const g2 = await call(`${BASE}&place=1`);
+  assert.equal(g2.body.err, 'Bad params');
+});
+
+test('POST plan by private place id: coordinates come from the PLACES secret', async () => {
+  const f = fakeFetch();
+  const r = await post('/v1/plan', { k: 'test-token', ...ORIG, place: '1' }, { fetchImpl: f });
+  assert.equal(r.body.ok, true);
+  assert.equal(tqUrl(f).searchParams.get('toPlace'), `${DOWNTOWN.lat},${DOWNTOWN.lon}`);
+  assert.deepEqual(r.body.pts.d, [DOWNTOWN.lat, DOWNTOWN.lon]);
+  const g = fakeFetch();
+  await post('/v1/plan', { k: 'test-token', ...ORIG, place: 'wom' }, { fetchImpl: g });
+  assert.equal(tqUrl(g).searchParams.get('toPlace'), '42.93208,-81.22315');
+  for (const id of ['3', '9', 'nope']) {
+    assert.equal((await post('/v1/plan', { k: 'test-token', ...ORIG, place: id })).body.err, 'Place not found', id);
+  }
+  // No secret: nothing to find.
+  assert.equal((await post('/v1/plan', { k: 'test-token', ...ORIG, place: '1' }, { env: ENV })).body.err, 'Place not found');
+});
+
+test('POST places: names and ids only; empty when the secret is missing or junk', async () => {
+  const r = await post('/v1/places', { k: 'test-token' });
+  assert.deepEqual(r.body, { v: 1, ok: true, places: [{ id: '1', n: 'Downtown' }, { id: 'wom', n: 'White Oaks Mall' }] });
+  assert.ok(!r.text.includes('42.9'), 'no coordinates in the list');
+  for (const env of [ENV, { ...ENV, PLACES: '' }, { ...ENV, PLACES: '{bad' }, { ...ENV, PLACES: '{"n":"x"}' }]) {
+    assert.deepEqual((await post('/v1/places', { k: 'test-token' }, { env })).body, { v: 1, ok: true, places: [] });
+  }
+  // Long names are cut; at most 20 places.
+  const many = JSON.stringify(Array.from({ length: 30 }, (_, i) => ({ n: `Place number ${i} with a long name`, lat: 42.98, lon: -81.25 })));
+  const m = await post('/v1/places', { k: 'test-token' }, { env: { ...ENV, PLACES: many } });
+  assert.equal(m.body.places.length, 20);
+  assert.ok(m.body.places.every((p) => p.n.length <= 20));
+  assert.equal((await post('/v1/places', { k: 'bad' })).body.err, 'Bad token');
+  // Only POST.
+  const g = await call('https://w.example/v1/places?k=test-token');
+  assert.equal(g.status, 405);
+});
+
+function geoFetch(matches, { status = 200 } = {}) {
+  const calls = [];
+  const f = async (url, init) => {
+    calls.push({ url: String(url), init });
+    return new Response(JSON.stringify(matches), { status });
+  };
+  f.calls = calls;
+  return f;
+}
+
+test('POST geocode: first match near London, rounded; far matches ignored', async () => {
+  const f = geoFetch([
+    { type: 'PLACE', name: 'Somewhere far away', lat: 38.23, lon: -85.74 },
+    { type: 'PLACE', name: 'Masonville Place', lat: 43.026312, lon: -81.280127 },
+  ]);
+  const r = await post('/v1/geocode', { k: 'test-token', q: '  Masonville   Place ' }, { fetchImpl: f });
+  assert.deepEqual(r.body, { v: 1, ok: true, lat: 43.02631, lon: -81.28013, n: 'Masonville Place' });
+  assert.equal(f.calls.length, 1);
+  const u = new URL(f.calls[0].url);
+  assert.equal(u.origin + u.pathname, 'https://api.transitous.org/api/v1/geocode');
+  // The address text has to go to Transitous (only there), with a London bias.
+  assert.equal(u.searchParams.get('text'), 'Masonville Place');
+  assert.equal(u.searchParams.get('place'), '42.9849,-81.2453');
+  assert.ok(!f.calls[0].url.includes('test-token'));
+  assert.equal(f.calls[0].init.headers['User-Agent'], USER_AGENT);
+});
+
+test('POST geocode: not found, bad input, Transitous down', async () => {
+  const far = geoFetch([{ type: 'PLACE', name: 'Nook and Nowhere', lat: 38.23, lon: -85.74 }]);
+  assert.deepEqual((await post('/v1/geocode', { k: 'test-token', q: 'zzqx nowhere' }, { fetchImpl: far })).body,
+    { v: 1, ok: false, err: 'Address not found' });
+  assert.equal((await post('/v1/geocode', { k: 'test-token', q: 'zzqx' }, { fetchImpl: geoFetch([]) })).body.err, 'Address not found');
+  assert.equal((await post('/v1/geocode', { k: 'test-token', q: 'Masonville' }, { fetchImpl: geoFetch([], { status: 500 }) })).body.err, 'Transitous down');
+  const none = geoFetch([]);
+  for (const q of [undefined, '', 'ab', 'x'.repeat(201), 42]) {
+    assert.equal((await post('/v1/geocode', { k: 'test-token', q }, { fetchImpl: none })).body.err, 'Bad address', String(q));
+  }
+  assert.equal(none.calls.length, 0);
+  assert.equal((await post('/v1/geocode', { k: 'wrong', q: 'Masonville Place' }, { fetchImpl: none })).body.err, 'Bad token');
+  assert.equal(none.calls.length, 0);
+});
+
+test('geocode: the address is only accepted in a POST body, never a URL', async () => {
+  const f = geoFetch([{ type: 'PLACE', name: 'Masonville Place', lat: 43.0263, lon: -81.2801 }]);
+  for (const url of ['https://w.example/v1/geocode?k=test-token&q=Masonville+Place', 'https://w.example/v1/plan?k=test-token&q=Masonville+Place']) {
+    const res = await handle(new Request(url), ENV_P, { fetchImpl: f, cache: null, now: NOW });
+    const body = await res.json();
+    assert.equal(body.ok, false, url);
+  }
+  // A query string on the POST is ignored: the body is what counts.
+  const req = new Request('https://w.example/v1/geocode?q=Masonville+Place', {
+    method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ k: 'test-token' }),
+  });
+  const res = await (await handle(req, ENV_P, { fetchImpl: f, cache: null, now: NOW })).json();
+  assert.equal(res.err, 'Bad address');
+  assert.equal(f.calls.length, 0);
+});
+
+test('the Worker source has no console logging', () => {
+  for (const n of ['core.js', 'plan.js', 'index.js']) {
+    const src = readFileSync(new URL(`../src/${n}`, import.meta.url), 'utf8');
+    assert.ok(!/console\./.test(src), n);
+  }
+});
+
+test('geocode calls fetch without a `this` (workerd rejects one)', async () => {
+  let self = 'unset';
+  const f = async function (url) {
+    self = this;
+    return new Response(JSON.stringify([{ name: 'Masonville Place', lat: 43.0263, lon: -81.2801 }]));
+  };
+  const r = await post('/v1/geocode', { k: 'test-token', q: 'Masonville Place' }, { fetchImpl: f });
+  assert.equal(r.body.ok, true);
+  assert.equal(self, undefined);
 });

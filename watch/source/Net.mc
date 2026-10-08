@@ -20,15 +20,36 @@ module Net {
         };
     }
 
-    function plan(lat as Double, lon as Double, dest as String, cb) as Void {
-        var params = {
-            "lat" => lat.format("%.5f"),
-            "lon" => lon.format("%.5f"),
-            "dest" => dest,
-            "mode" => "depart",
-            "k" => WatchUi.loadResource(Rez.Strings.Token) as String
-        };
-        Communications.makeWebRequest(baseUrl() + "/v1/plan", params, options(), cb);
+    // Worker POSTs: JSON body with the token, so nothing private (token,
+    // address, coordinates) is ever in a URL.
+    function post(path as String, body as Dictionary, cb) as Void {
+        body["k"] = WatchUi.loadResource(Rez.Strings.Token) as String;
+        Communications.makeWebRequest(baseUrl() + path, body, {
+            :method => Communications.HTTP_REQUEST_METHOD_POST,
+            :headers => { "Content-Type" => Communications.REQUEST_CONTENT_TYPE_JSON },
+            :responseType => Communications.HTTP_RESPONSE_CONTENT_TYPE_JSON
+        }, cb);
+    }
+
+    // to: {"dest" => "school"|"home"}, {"place" => id} (private list) or
+    // {"tlat", "tlon"} (phone-settings and saved places).
+    function plan(lat as Double, lon as Double, to as Dictionary, cb) as Void {
+        var body = { "lat" => lat.format("%.5f"), "lon" => lon.format("%.5f"), "mode" => "depart" };
+        var keys = to.keys();
+        for (var i = 0; i < keys.size(); i += 1) {
+            body[keys[i]] = to[keys[i]];
+        }
+        post("/v1/plan", body, cb);
+    }
+
+    // Address -> {"ok", "lat", "lon"} or {"ok" => false, "err"}.
+    function geocode(addr as String, cb) as Void {
+        post("/v1/geocode", { "q" => addr }, cb);
+    }
+
+    // Private list: {"ok", "places" => [{"id", "n"}]} (names only).
+    function places(cb) as Void {
+        post("/v1/places", {}, cb);
     }
 
     function ping(cb) as Void {

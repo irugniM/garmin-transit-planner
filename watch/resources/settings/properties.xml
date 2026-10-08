@@ -1,0 +1,12 @@
+<properties>
+    <property id="n1" type="string"></property>
+    <property id="a1" type="string"></property>
+    <property id="n2" type="string"></property>
+    <property id="a2" type="string"></property>
+    <property id="n3" type="string"></property>
+    <property id="a3" type="string"></property>
+    <property id="n4" type="string"></property>
+    <property id="a4" type="string"></property>
+    <property id="n5" type="string"></property>
+    <property id="a5" type="string"></property>
+</properties>

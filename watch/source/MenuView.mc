@@ -2,18 +2,69 @@ import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.WatchUi;
 
-// Start screen: To School, To Home, Arrow: On/Off, Test connection
-// (+ debug-only items).
+// Start screen: To School, To Home, phone-settings places, saved places,
+// private-list places, Save this place (+ Edit places once one is saved),
+// Arrow: On/Off, Test connection (+ debug-only items).
+// Each item: [label options, action, argument].
 class MenuView extends WatchUi.View {
+    enum {
+        A_TRIP,
+        A_SAVE,
+        A_EDIT,
+        A_ARROW,
+        A_TEST,
+        A_DEBUG
+    }
+
     var sel = 0;
+    hidden var _items = null;
+    hidden var _ver = -1;
 
     function initialize() {
         View.initialize();
     }
 
+    function build() as Array {
+        var list = [[["To School", "School"], A_TRIP, Places.school()], [["To Home", "Home"], A_TRIP, Places.home()]];
+        for (var i = 1; i <= Places.SLOTS; i += 1) {
+            var d = Places.setting(i);
+            if (d != null) {
+                list.add([d["t"], A_TRIP, d]);
+            }
+        }
+        var sv = Places.saved();
+        for (var i = 0; i < sv.size(); i += 1) {
+            var d = Places.savedDest(sv[i]);
+            list.add([d["t"], A_TRIP, d]);
+        }
+        var pl = Places.privates();
+        for (var i = 0; i < pl.size(); i += 1) {
+            var d = Places.privateDest(pl[i]);
+            list.add([d["t"], A_TRIP, d]);
+        }
+        list.add([["Save this place", "Save place"], A_SAVE, null]);
+        if (sv.size() > 0) {
+            list.add([["Edit places", "Edit"], A_EDIT, null]);
+        }
+        list.add([Store.arrowOn() ? ["Arrow: On", "Arrow On"] : ["Arrow: Off", "Arrow Off"], A_ARROW, null]);
+        list.add([["Test connection", "Test conn.", "Test"], A_TEST, null]);
+        return Debug.menuItems(list);
+    }
+
+    // Rebuilt only after a change (Places.ver), not on every redraw.
     function items() as Array {
-        var arrow = Store.arrowOn() ? ["Arrow: On", "Arrow On"] : ["Arrow: Off", "Arrow Off"];
-        return Debug.menuItems([["To School", "School"], ["To Home", "Home"], arrow, ["Test connection", "Test conn.", "Test"]]);
+        if (_items == null || _ver != Places.ver) {
+            _ver = Places.ver;
+            _items = build();
+            if (sel >= _items.size()) {
+                sel = _items.size() - 1;
+            }
+        }
+        return _items;
+    }
+
+    function current() as Array {
+        return items()[sel];
     }
 
     function move(d as Number) as Void {
@@ -40,7 +91,7 @@ class MenuView extends WatchUi.View {
             Layout.drawLeft(dc, 40, f, "Depart now");
         }
         for (var i = 0; i < rows && first + i < list.size(); i += 1) {
-            Layout.drawItem(dc, top + i * pitch, f, list[first + i], first + i == sel);
+            Layout.drawItem(dc, top + i * pitch, f, list[first + i][0], first + i == sel);
         }
         if (first + rows < list.size()) {
             Layout.arrowDown(dc);
@@ -70,18 +121,25 @@ class MenuDelegate extends WatchUi.BehaviorDelegate {
     }
 
     function onSelect() as Boolean {
-        var s = view.sel;
+        var it = view.current();
+        var act = it[1];
         var v = null;
-        if (s == 0) {
-            v = new TripView(TripView.MODE_TRIP, "school");
-        } else if (s == 1) {
-            v = new TripView(TripView.MODE_TRIP, "home");
-        } else if (s == 2) {
+        if (act == MenuView.A_TRIP) {
+            v = new TripView(TripView.MODE_TRIP, it[2]);
+        } else if (act == MenuView.A_SAVE) {
+            var sv = new SaveView();
+            WatchUi.pushView(sv, new SaveDelegate(sv), WatchUi.SLIDE_LEFT);
+            return true;
+        } else if (act == MenuView.A_EDIT) {
+            Edit.open();
+            return true;
+        } else if (act == MenuView.A_ARROW) {
             Store.setArrow(!Store.arrowOn());
-        } else if (s == 3) {
-            v = new TripView(TripView.MODE_PING, "");
+            Places.changed();
+        } else if (act == MenuView.A_TEST) {
+            v = new TripView(TripView.MODE_PING, null);
         } else {
-            v = Debug.select(s - 4);
+            v = Debug.select(it[2]);
         }
         if (v != null) {
             WatchUi.pushView(v, new TripDelegate(v), WatchUi.SLIDE_LEFT);
