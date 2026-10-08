@@ -15,6 +15,28 @@ Worker --> https://api.transitous.org/api/v5/plan      (trip plan)
 Worker --> http://gtfs.ltconline.ca/Alert/Alerts.json  (stop closures, cached 60 s)
 ```
 
+## Screenshots
+
+Simulator shots (Instinct 3 Solar 45mm, live Worker, from public places).
+
+![Trip screen with the circle arrow](docs/03-trip-arrow.png)
+
+The top-right circle points to your stop and the top line shows how far it is.
+
+![Main menu](docs/01-menu.png)
+
+Pick To School or To Home. Arrow On/Off is right on the menu.
+
+![Trip screen: leave time and transfers](docs/02-trip.png)
+![Trip screen: stop and bus](docs/02b-trip-bus.png)
+![Trip screen: arrival and next bus](docs/02c-trip-arrive.png)
+
+When to leave, which bus, transfers and arrival time on one screen, with no map.
+
+![You're here](docs/04-youre-here.png)
+
+Already at your destination? It tells you instead of planning a trip.
+
 ## Data and attribution
 
 - Trip plans come from **Transitous**, a free, volunteer-run public transport
