@@ -2,7 +2,8 @@ import Toybox.Graphics;
 import Toybox.Lang;
 import Toybox.WatchUi;
 
-// Start screen: To School, To Home, Test connection (+ debug-only items).
+// Start screen: To School, To Home, Arrow: On/Off, Test connection
+// (+ debug-only items).
 class MenuView extends WatchUi.View {
     var sel = 0;
 
@@ -11,7 +12,8 @@ class MenuView extends WatchUi.View {
     }
 
     function items() as Array {
-        return Debug.menuItems([["To School", "School"], ["To Home", "Home"], ["Test connection", "Test conn.", "Test"]]);
+        var arrow = Store.arrowOn() ? ["Arrow: On", "Arrow On"] : ["Arrow: Off", "Arrow Off"];
+        return Debug.menuItems([["To School", "School"], ["To Home", "Home"], arrow, ["Test connection", "Test conn.", "Test"]]);
     }
 
     function move(d as Number) as Void {
@@ -75,9 +77,11 @@ class MenuDelegate extends WatchUi.BehaviorDelegate {
         } else if (s == 1) {
             v = new TripView(TripView.MODE_TRIP, "home");
         } else if (s == 2) {
+            Store.setArrow(!Store.arrowOn());
+        } else if (s == 3) {
             v = new TripView(TripView.MODE_PING, "");
         } else {
-            v = Debug.select(s);
+            v = Debug.select(s - 4);
         }
         if (v != null) {
             WatchUi.pushView(v, new TripDelegate(v), WatchUi.SLIDE_LEFT);

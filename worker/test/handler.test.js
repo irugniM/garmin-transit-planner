@@ -72,6 +72,11 @@ test('plan home uses HOME_LATLON and arrive-by', async () => {
   const u = new URL(f.calls.find((c) => c.url.includes('transitous')).url);
   assert.equal(u.searchParams.get('toPlace'), '43.02566,-81.2815');
   assert.equal(u.searchParams.get('arriveBy'), 'true');
+  // pts: the (synthetic test) home from the secret, and the first boarding stop.
+  assert.deepEqual(r.body.pts.d, [43.02566, -81.2815]);
+  assert.equal(r.body.pts.s.length, 2);
+  assert.equal(typeof r.body.pts.t, 'number');
+  assert.ok(Buffer.byteLength(JSON.stringify(r.body)) <= 600);
 });
 
 test('errors: token', async () => {
@@ -152,7 +157,10 @@ test('at the destination: "You\'re here" without calling Transitous', async () =
   const f = fakeFetch();
   // About 15 m from the school stop.
   const r = await call('https://w.example/v1/plan?lat=43.00140&lon=-81.27890&k=test-token&dest=school', { fetchImpl: f });
-  assert.deepEqual(r.body, { v: 1, ok: true, leave: NOW, arr: NOW, rt: false, xfers: 0, lines: ["You're here"], alert: null, next: null });
+  assert.deepEqual(r.body, {
+    v: 1, ok: true, leave: NOW, arr: NOW, rt: false, xfers: 0, lines: ["You're here"], alert: null, next: null,
+    pts: { d: [43.00129, -81.27883] },
+  });
   assert.equal(f.calls.length, 0);
   // Home works the same way (test home is Masonville; BASE is ~15 m from it).
   assert.deepEqual((await call(`${BASE}&dest=home`, { fetchImpl: f })).body.lines, ["You're here"]);
@@ -170,5 +178,6 @@ test('walk-only reply when Transitous has only `direct`', async () => {
   const r = await call(`${BASE}&dest=school`, { fetchImpl: f });
   assert.deepEqual(r.body, {
     v: 1, ok: true, leave: NOW, arr: NOW + 480, rt: false, xfers: 0, lines: ['Walk 8 min', 'Arrive 08:08'], alert: null, next: null,
+    pts: { d: [43.00129, -81.27883] },
   });
 });

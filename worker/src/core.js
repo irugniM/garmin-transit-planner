@@ -123,7 +123,7 @@ export async function planTrip(params, env, deps) {
     if (!to) return errorReply('Home not set');
   }
   // Already there: no need to ask Transitous.
-  if (metres({ lat, lon }, to) <= HERE_M) return hereReply(now);
+  if (metres({ lat, lon }, to) <= HERE_M) return hereReply(now, to);
 
   const u = new URL(TRANSITOUS);
   u.searchParams.set('fromPlace', `${lat.toFixed(5)},${lon.toFixed(5)}`);
@@ -155,7 +155,7 @@ export async function planTrip(params, env, deps) {
     return errorReply('Transitous down');
   }
   const alerts = await alertsP;
-  return trimPlan(tq, { mode, t, alerts });
+  return trimPlan(tq, { mode, t, alerts, to });
 }
 
 export async function handle(request, env, deps) {

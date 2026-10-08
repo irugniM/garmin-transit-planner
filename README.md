@@ -49,8 +49,19 @@ Reply (times are America/Toronto, lines are at most 18 characters):
           "to White Oaks Mall","Off #509 08:11","Delaware Hall SB","Walk 2m to #1173",
           "Talbot College","Bus 27 08:15","to Capulet Lane","Off #1647 08:23",
           "Sarnia/Western WB","Temp stop 130m W","Walk 3m","Arrive 08:26"],
- "alert":"#1647 closed: temp stop 130m W","next":"Next bus 08:14"}
+ "alert":"#1647 closed: temp stop 130m W","next":"Next bus 08:14",
+ "pts":{"s":[43.02588,-81.28161],"t":1791460920,"d":[43.00129,-81.27883]}}
 ```
+
+- `pts` (for the watch's arrow): `s` the first boarding stop [lat, lon] (5 dp),
+  `t` its bus's departure (unix secs), `d` the destination. Walk-only and
+  `You're here` replies have just `d`; `null` when nothing is known. For
+  `dest=home`, `d` is the `HOME_LATLON` secret, sent only to the watch at
+  runtime. `pts` counts toward the 600 B reply budget. Older watch builds
+  ignore it.
+- Stops without a code (e.g. a train station) show `Walk 6m to stop` /
+  `Board at stop` and `Off 12:43`, each with the stop's name on the next line
+  (must-keep), so times are never cut.
 
 - Which trip: the earliest arrival, except that a trip with fewer transfers wins
   if it arrives at most 10 min later (arrive-by: leaves at most 10 min earlier
@@ -169,10 +180,20 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
 
 ### Screens and buttons
 
-- Menu: **To School**, **To Home**, **Test connection**. UP/DOWN move, START opens.
+- Menu: **To School**, **To Home**, **Arrow: On/Off** (toggle, saved in
+  Storage, default On), **Test connection**. UP/DOWN move, START opens.
 - Trip: the top shows `Leave in N min` (from the reply's `leave`), then the alert
   line (if any), the steps, and `next` (`Next bus hh:mm`). UP/DOWN scroll, START refreshes,
   BACK returns to the menu.
+- Arrow (when On and the reply has `pts`): a row above the steps with an arrow
+  and the distance (`180m to stop`, `1.2km to dest`) from the current position
+  to the first boarding stop, until its bus leaves or you're within 30 m
+  (`at stop`); then to the destination. The arrow turns with the compass
+  heading (`Sensor` heading, else the GPS heading while moving at 1 m/s or
+  more); with no heading it shows the bearing as a letter (`NE 180m to stop`).
+  While TripView is open, location events stay on (continuous, about 1 Hz) and
+  the screen redraws every second; leaving the view turns both off. Needs the
+  `Sensor` permission for the compass.
 - Position: uses the last known position right away, keeps a GPS fix running
   until accuracy is USABLE or better, and re-asks once if the better fix is more
   than 100 m from the one first sent. With no position at all: `Waiting for GPS`.
@@ -184,8 +205,8 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
 - Test connection calls `/v1/ping` and shows `Connection OK` with the round trip
   time, or the error.
 - Debug builds only: **Demo screens** (START cycles through every screen state
-  with fake data) and **Fake GPS** (a fixed public spot at Western University, for
-  the simulator).
+  with fake data, including six arrow states with a fake heading) and **Fake GPS**
+  (a fixed public spot at Western University, for the simulator).
 
 Depart-now only in v1; the Worker already supports `mode=arrive`.
 

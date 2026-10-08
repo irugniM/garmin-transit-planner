@@ -67,9 +67,11 @@ export function destLine(to, max = MAX_LINE) {
   return clipWords(s, max).replace(/\s*(&|and|-|\/)$/i, '').trimEnd();
 }
 
+// "#1234", or "stop" for a stop without a code (its name goes on the next
+// line, so times and walk minutes are never cut for a long name).
 function stopTag(place) {
   if (place && place.stopCode) return `#${place.stopCode}`;
-  return clip(place?.name || 'stop', 10);
+  return 'stop';
 }
 
 function isTransit(leg) {
@@ -145,9 +147,11 @@ export function itineraryItems(it, alerts = null) {
     if (leg.realTime && (bus + ' live').length <= MAX_LINE) bus += ' live';
     out.push({ k: 'bus', t: clip(bus), n: busNo });
     if (to) out.push({ k: 'to', t: destLine(to), n: busNo, of: nBus });
-    out.push({ k: 'off', t: clip(`Off ${stopTag(leg.to)} ${hhmm(toSecs(leg.endTime))}`), n: busNo });
+    const coded = Boolean(leg.to?.stopCode);
+    out.push({ k: 'off', t: clip(coded ? `Off #${leg.to.stopCode} ${hhmm(toSecs(leg.endTime))}` : `Off ${hhmm(toSecs(leg.endTime))}`), n: busNo });
+    // Without a code the name is the only thing saying where: must-keep.
     const offName = stopName(leg.to);
-    if (offName) out.push({ k: 'offname', t: offName, n: busNo });
+    if (offName) out.push({ k: coded ? 'offname' : 'name', t: offName, n: busNo });
     const shutOff = closureLine(leg.to, route, alerts);
     if (shutOff) out.push({ k: 'closed', t: shutOff, n: busNo });
     lastOff = leg.to?.stopId || null;
@@ -355,8 +359,8 @@ export function metres(a, b) {
   return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
 }
 
-export function hereReply(now) {
-  return { v: 1, ok: true, leave: now, arr: now, rt: false, xfers: 0, lines: ["You're here"], alert: null, next: null };
+export function hereReply(now, to = null) {
+  return { v: 1, ok: true, leave: now, arr: now, rt: false, xfers: 0, lines: ["You're here"], alert: null, next: null, pts: ptsFor(null, to) };
 }
 
 // Shortest walk-only connection in Transitous' `direct` list, as seconds.
@@ -448,9 +452,30 @@ export function legStops(it) {
 
 export const MAX_REPLY = 600; // bytes; the watch handles this comfortably
 
+const r5 = (x) => Math.round(Number(x) * 1e5) / 1e5;
+const ll = (p) => (p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)) && p.lat !== null && p.lon !== null
+  ? [r5(p.lat), r5(p.lon)] : null);
+
+// For the watch's arrow: { s: first boarding stop [lat, lon], t: that bus's
+// departure (unix secs), d: destination [lat, lon] }. s/t only when the
+// answer is a bus trip; null when there's nothing to point at.
+export function ptsFor(chosen, to) {
+  const out = {};
+  const leg = chosen ? (chosen.legs || []).find(isTransit) : null;
+  const s = ll(leg?.from);
+  if (s && leg.startTime) {
+    out.s = s;
+    out.t = toSecs(leg.startTime);
+  }
+  const d = ll(to);
+  if (d) out.d = d;
+  return Object.keys(out).length ? out : null;
+}
+
 // Build the reply object. `alerts` is the compact map from compactAlerts().
 // `t` is the query time (depart: leave at, arrive: arrive by).
-export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY } = {}) {
+// `to` is the destination { lat, lon } (for `pts`).
+export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY, to = null } = {}) {
   const its = Array.isArray(tq?.itineraries) ? tq.itineraries : [];
   const { chosen, other } = chooseItinerary(its, mode, t);
   const walk = bestWalk(tq);
@@ -484,6 +509,7 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
       lines: [`Walk ${mins(w.dur)} min`, `Arrive ${hhmm(w.arr)}`],
       alert: null,
       next,
+      pts: ptsFor(null, to),
     };
   }
 
@@ -504,6 +530,7 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
     lines: [],
     alert: alerts ? alertFor(legStops(chosen), alerts) : null,
     next,
+    pts: ptsFor(chosen, to),
   };
   const items = itineraryItems(chosen, alerts);
   if (reply.xfers > 0) items.push(...altItems(its, chosen, mode, t));

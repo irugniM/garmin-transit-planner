@@ -1,4 +1,5 @@
 import Toybox.Lang;
+import Toybox.Math;
 import Toybox.Position;
 import Toybox.System;
 import Toybox.Time;
@@ -11,18 +12,26 @@ import Toybox.WatchUi;
 (:debug)
 module Debug {
     var fake = false;
-    const DEMO_COUNT = 15;
+    const DEMO_COUNT = 21;
+    // Arrow demos: fake compass heading (radians; null = none).
+    var arrowDemo = false;
+    var head = null;
 
     function fakePos() {
         return fake ? [43.0102d, -81.2732d] : null;
+    }
+
+    function heading(real) {
+        return arrowDemo ? head : real;
     }
 
     function menuItems(base as Array) as Array {
         return base.addAll([["Demo screens", "Demo"], [fake ? "Fake GPS: on" : "Fake GPS: off", "Fake GPS"]]);
     }
 
+    // i counts from the first debug item.
     function select(i as Number) {
-        if (i == 3) {
+        if (i == 0) {
             return new TripView(TripView.MODE_DEMO, "school");
         }
         fake = !fake;
@@ -35,15 +44,49 @@ module Debug {
         return {
             "v" => 1, "ok" => true, "leave" => t + leaveIn, "arr" => t + leaveIn + 1500,
             "rt" => false, "xfers" => 1,
-            "lines" => ["Leave 08:01", "Walk 1m to #1143", "Bus 13A 08:02", "to White Oaks Mall", "Off #509 08:11",
-                "Walk 2m to #1173", "Bus 27 08:15", "to Capulet Lane", "Off #1647 08:23", "Arrive 08:26"],
+            "lines" => ["Leave 08:01", "1 transfer", "Walk 1m to #1143", "Masonville Pl 4", "Bus 13A 08:02", "to White Oaks Mall",
+                "Off #509 08:11", "Delaware Hall SB", "Walk 2m to #1173", "Talbot College", "Bus 27 08:15", "to Capulet Lane",
+                "Off #1647 08:23", "Sarnia/Western WB", "Temp stop 130m W", "Walk 3m", "Arrive 08:26"],
             "alert" => withAlert ? "#1647 closed: temp stop 130m W" : null,
-            "next" => "Next: 08:10"
+            "next" => "Next bus 08:14"
         };
+    }
+
+    // Natural Science stop (#1222) and the school stop: public places.
+    const STOP = [43.01017d, -81.27317d];
+    const SCHOOL = [43.00129d, -81.27883d];
+
+    // Reply with `pts`; the first bus leaves in busIn seconds.
+    function arrowReply(busIn as Number) as Dictionary {
+        var t = Time.now().value();
+        var r = sampleReply(false, busIn - 60);
+        r["lines"] = ["Leave 08:01", "No transfer", "Walk 3m to #1222", "Natural Science", "Bus 27 08:04", "to Capulet Lane",
+            "Off #1647 08:10", "Sarnia/Western WB", "Walk 3m", "Arrive 08:13"];
+        r["pts"] = { "s" => [STOP[0], STOP[1]], "t" => t + busIn, "d" => [SCHOOL[0], SCHOOL[1]] };
+        return r;
+    }
+
+    // Arrow demo i: [name, position, heading in degrees or null, bus in secs].
+    function arrowCase(i as Number) as Array {
+        // ~130 m S and ~125 m W of the stop: 180 m to the NE.
+        var sw = [STOP[0] - 0.00117d, STOP[1] - 0.00153d];
+        if (i == 0) {
+            return ["arrow 180m to stop, facing N", sw, 0, 600];
+        } else if (i == 1) {
+            return ["arrow 180m to stop, facing E", sw, 90, 600];
+        } else if (i == 2) {
+            return ["arrow 1.2km to dest after the bus left, facing SSW", [SCHOOL[0] + 0.0108d, SCHOOL[1]], 200, -60];
+        } else if (i == 3) {
+            return ["arrow at stop", [STOP[0] + 0.0001d, STOP[1]], 0, 600];
+        } else if (i == 4) {
+            return ["arrow no heading: compass letter", sw, null, 600];
+        }
+        return ["arrow 45m to stop, facing W, scrolled", [STOP[0] - 0.0004d, STOP[1]], 270, 600];
     }
 
     function apply(v as TripView) as Void {
         var i = v.demo % DEMO_COUNT;
+        arrowDemo = false;
         v.busy = false;
         v.err = null;
         v.reply = null;
@@ -90,6 +133,17 @@ module Debug {
             name = "worker err";
             v.err = "No trips found";
             v.state = TripView.S_ERR;
+        } else if (i >= 15) {
+            var c = arrowCase(i - 15);
+            name = c[0];
+            arrowDemo = true;
+            Gps.pos = c[1];
+            Gps.quality = Position.QUALITY_GOOD;
+            head = c[2] == null ? null : (c[2] as Number) * Math.PI / 180.0;
+            v.reply = arrowReply(c[3] as Number);
+            v.gotAt = Time.now().value();
+            v.state = TripView.S_OK;
+            v.scroll = i == 20 ? 3 : 0;
         } else {
             name = "ping OK";
             v.mode = TripView.MODE_PING;
@@ -97,7 +151,8 @@ module Debug {
             v.pingT = Time.now().value();
             v.state = TripView.S_PING_OK;
         }
-        System.println("LTCTrip demo " + i + ": " + name + " | " + v.bodyLines().toString());
+        var st = Arrow.state(v.reply, Time.now().value());
+        System.println("LTCTrip demo " + i + ": " + name + " | " + (st != null ? "arrow " + st[:text] + " angle " + st[:angle] + " | " : "") + v.bodyLines().toString());
         WatchUi.requestUpdate();
     }
 }
@@ -106,6 +161,10 @@ module Debug {
 module Debug {
     function fakePos() {
         return null;
+    }
+
+    function heading(real) {
+        return real;
     }
 
     function menuItems(base as Array) as Array {

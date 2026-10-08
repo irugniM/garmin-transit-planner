@@ -24,7 +24,7 @@ function checkShape(r) {
   assert.ok(Array.isArray(r.lines) && r.lines.length >= 1);
   for (const l of r.lines) assert.ok(typeof l === 'string' && l.length <= MAX_LINE, `line too long: "${l}"`);
   if (r.next !== null) assert.ok(r.next.length <= MAX_LINE, `next too long: "${r.next}"`);
-  assert.deepEqual(Object.keys(r), ['v', 'ok', 'leave', 'arr', 'rt', 'xfers', 'lines', 'alert', 'next']);
+  assert.deepEqual(Object.keys(r), ['v', 'ok', 'leave', 'arr', 'rt', 'xfers', 'lines', 'alert', 'next', 'pts']);
 }
 
 // Every bus line has a line naming its boarding stop just before it (a walk
@@ -68,7 +68,7 @@ test('trim: to school with a transfer and a closure alert at the stop you get of
   assert.equal(r.next, null);
   const bytes = Buffer.byteLength(JSON.stringify(r));
   console.log(`  reply bytes (1 transfer + alert): ${bytes}`);
-  assert.ok(bytes < 450, `reply ${bytes} B`);
+  assert.ok(bytes < 500, `reply ${bytes} B`); // with `pts`
 });
 
 test('trim: from school, transfer at a different stop, Express headsign', () => {
@@ -375,9 +375,10 @@ test('two transfers: every Bus and Off kept, ends with Off, Walk, Arrive', () =>
 test('over budget: drops headsigns (middle first), Off stop names, then Leave, never Board/stop name/Bus/Off/last Walk/Arrive', () => {
   const tq = only('argyle_to_westmount_0800', 1);
   const t = T0;
-  const r0 = trimPlan(tq, { t, maxBytes: 440 });
+  const fullBytes = Buffer.byteLength(JSON.stringify(trimPlan(tq, { t })));
+  const r0 = trimPlan(tq, { t, maxBytes: fullBytes - 20 });
   assert.deepEqual(r0.lines.filter((l) => /^(to |Victoria Hospt)/.test(l)), ['to Natural Science', 'to Talbot Village']);
-  const r1 = trimPlan(tq, { t, maxBytes: 420 });
+  const r1 = trimPlan(tq, { t, maxBytes: fullBytes - 40 });
   assert.deepEqual(r1.lines.filter((l) => /^(to |Victoria Hospt)/.test(l)), ['to Natural Science']);
   assert.ok(r1.lines.includes('Westmount Mall 1'), 'Off names go after the headsigns');
   const r2 = trimPlan(tq, { t, maxBytes: 200 });
@@ -726,4 +727,58 @@ test('Next bus / Earlier bus: first bus departure, never the chosen trip\'s own 
   assert.equal(hhmm(r.leave), '16:10');
   assert.equal(r.next, 'Earlier bus 16:14');
   assert.ok('Earlier bus 23:59'.length <= MAX_LINE);
+});
+
+// ---- code-less stops (e.g. a train station) ----------------------------------
+
+test('stops without a code: "Off HH:MM" / "Walk Nm to stop" plus a name line; times never cut', () => {
+  const base = structuredClone(fx('masonville_to_school_0800').itineraries[1]); // WALK, BUS 93, WALK
+  const bus = base.legs[1];
+  bus.from = { name: 'Downtown Union Station UP Express Platform', stopId: 'X:UPX1', lat: 43.6453, lon: -79.3806 };
+  bus.to = { name: 'Malton GO Station UP Express', stopId: 'X:UPX2', lat: 43.7055, lon: -79.6366 };
+  const r = trimPlan({ itineraries: [base] }, { t: T0, to: { lat: 43.00129, lon: -81.27883 } });
+  checkShape(r);
+  checkBoarding(r.lines);
+  const i = r.lines.findIndex((l) => l.startsWith('Walk 4m'));
+  assert.equal(r.lines[i], 'Walk 4m to stop');
+  assert.match(r.lines[i + 1], /^Dtwn Union/);
+  const off = r.lines.findIndex((l) => l.startsWith('Off '));
+  assert.equal(r.lines[off], 'Off 08:23');
+  assert.match(r.lines[off + 1], /^Malton/);
+  // The code-less Off name is must-keep (it is the only "where").
+  const tight = trimPlan({ itineraries: [base] }, { t: T0, maxBytes: 100 });
+  assert.equal(tight.lines[tight.lines.indexOf('Off 08:23') + 1], r.lines[off + 1]);
+  // No walk leg: "Board at stop".
+  const noWalk = { ...base, legs: base.legs.slice(1) };
+  assert.deepEqual(itineraryLines(noWalk).slice(2, 4), ['Board at stop', r.lines[i + 1]]);
+  for (const l of r.lines) assert.ok(l.length <= MAX_LINE, l);
+});
+
+// ---- pts: where the watch's arrow points ------------------------------------
+
+test('pts: first boarding stop, its departure, and the destination (5 dp)', () => {
+  const to = { lat: 43.001294321, lon: -81.278834999 };
+  const r = trimPlan(only('masonville_to_school_0800', 0), { t: T0, to });
+  const leg = fx('masonville_to_school_0800').itineraries[0].legs.find((l) => l.mode !== 'WALK');
+  assert.deepEqual(r.pts, {
+    s: [Math.round(leg.from.lat * 1e5) / 1e5, Math.round(leg.from.lon * 1e5) / 1e5],
+    t: toSecs(leg.startTime),
+    d: [43.00129, -81.27883],
+  });
+  assert.equal(hhmm(r.pts.t), '08:02');
+  // Walk-only and "You're here": destination only.
+  assert.deepEqual(trimPlan({ itineraries: [], direct: [walkDirect(300)] }, { t: T0, to }).pts, { d: [43.00129, -81.27883] });
+  assert.deepEqual(hereReply(T0, to).pts, { d: [43.00129, -81.27883] });
+  // Nothing known: null; old callers without `to` still get the stop.
+  assert.equal(hereReply(T0).pts, null);
+  assert.deepEqual(Object.keys(trimPlan(only('masonville_to_school_0800', 0), { t: T0 }).pts), ['s', 't']);
+  // Synthetic stops without coordinates: no s.
+  assert.deepEqual(trimPlan({ itineraries: [trip('08:00', '08:10', ['9'])] }, { t: T0, to }).pts, { d: [43.00129, -81.27883] });
+  // Counted in the 600 B budget: the biggest fixture reply still fits.
+  for (const n of ['argyle_to_westmount_0800', 'masonville_to_school_0800']) {
+    for (const it of fx(n).itineraries) {
+      const x = trimPlan({ itineraries: [it] }, { t: T0, to, alerts: ALERTS });
+      assert.ok(x.pts && Buffer.byteLength(JSON.stringify(x)) <= MAX_REPLY);
+    }
+  }
 });

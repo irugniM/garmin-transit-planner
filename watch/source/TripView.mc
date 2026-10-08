@@ -34,6 +34,7 @@ class TripView extends WatchUi.View {
     var pingMs = 0;
     var pingT = 0;
     var demo = 0;
+    var isDemo = false;  // demo screens (some of them switch mode to PING)
     hidden var _alive = true;
     hidden var _started = false;
     hidden var _timer = null;
@@ -47,23 +48,38 @@ class TripView extends WatchUi.View {
         View.initialize();
         mode = m;
         dest = d;
+        isDemo = m == MODE_DEMO;
+    }
+
+    // The arrow redraws every second (compass) and keeps GPS events on;
+    // without it, a redraw every 20 s for the countdown is enough.
+    function arrowWanted() as Boolean {
+        return mode != MODE_PING && Store.arrowOn();
     }
 
     function onShow() as Void {
+        var arrow = arrowWanted();
         if (_timer == null) {
             _timer = new Timer.Timer();
-            _timer.start(method(:onTick), 20000, true);
+            _timer.start(method(:onTick), arrow ? 1000 : 20000, true);
         }
         if (!_started) {
             _started = true;
             begin();
         }
+        if (arrow && mode == MODE_TRIP && _alive) {
+            Gps.setFollow(true, method(:onTick));
+        }
     }
 
+    // Leaving the view (or the app): no timer, no location events.
     function onHide() as Void {
         if (_timer != null) {
             _timer.stop();
             _timer = null;
+        }
+        if (mode == MODE_TRIP) {
+            Gps.setFollow(false, null);
         }
     }
 
@@ -86,7 +102,7 @@ class TripView extends WatchUi.View {
     // ---- flow ----------------------------------------------------------
 
     function begin() as Void {
-        if (mode == MODE_DEMO) {
+        if (isDemo) {
             Debug.apply(self);
             return;
         }
@@ -126,7 +142,7 @@ class TripView extends WatchUi.View {
 
     // START
     function refresh() as Void {
-        if (mode == MODE_DEMO) {
+        if (isDemo) {
             demo += 1;
             Debug.apply(self);
             return;
@@ -367,12 +383,17 @@ class TripView extends WatchUi.View {
         }
         var shown = lines.slice(scroll, null);
         var top = Layout.bodyTop();
+        var barTop = top;
         var list = reply != null && (state == S_OK || state == S_ERR);
         var pitch = dc.getFontHeight(f) - 3;
+        // Arrow row pinned above the scrolling lines.
+        if (list && arrowWanted() && Arrow.drawRow(dc, top, f, 8, reply, now())) {
+            top += pitch;
+        }
         more = Layout.flow(dc, top, f, pitch, shown, !list, list ? 8 : 0);
         if (list && (more || scroll > 0)) {
             var rows = (dc.getHeight() - top) / pitch;
-            Layout.scrollbar(dc, top + 4, top + 54, scroll, rows, lines.size());
+            Layout.scrollbar(dc, barTop + 4, barTop + 54, scroll, rows, lines.size());
         }
     }
 }
