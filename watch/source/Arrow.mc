@@ -8,8 +8,10 @@ import Toybox.Time;
 // boarding stop (until its bus leaves or you're within 30 m of it), then to
 // the destination. Both come from the reply's `pts`:
 //   {"s": [lat, lon], "t": first bus departure (unix secs), "d": [lat, lon]}
-// Rotated by the compass heading (else the GPS heading while moving); with
-// neither, the bearing is shown as a compass letter instead.
+// The arrow sits in the top-right subscreen circle, rotated by the compass
+// heading (else the GPS heading while moving); with neither, the circle shows
+// the bearing as a compass letter, and within 30 m a dot. The distance is a
+// text row above the trip lines.
 module Arrow {
     const NEAR = 30.0;          // metres: "at stop"
     const MIN_GPS_SPEED = 1.0;  // m/s: below this the GPS heading is noise
@@ -55,15 +57,16 @@ module Arrow {
         return deg;
     }
 
-    // { :text => String, :angle => degrees to rotate the arrow (or null for
-    // no arrow) }, or null when there's nothing to show.
+    // { :text => distance row, :angle => degrees to rotate the arrow in the
+    // circle, :letter => compass letter (no heading), :dot => true when
+    // within 30 m }, or null when there's nothing to show.
     function state(reply, now as Number) {
         if (!hasPts(reply)) {
             return null;
         }
         var p = reply["pts"] as Dictionary;
         if (Gps.pos == null) {
-            return { :text => "Arrow: no GPS", :angle => null };
+            return { :text => "no GPS" };
         }
         var s = point(p["s"]);
         var d = point(p["d"]);
@@ -71,9 +74,6 @@ module Arrow {
         var target = d;
         var label = "dest";
         if (s != null && (t == 0 || now < t)) {
-            if (Gps.metres(Gps.pos, s) <= NEAR) {
-                return { :text => "at stop", :angle => null };
-            }
             target = s;
             label = "stop";
         }
@@ -82,14 +82,15 @@ module Arrow {
         }
         var m = Gps.metres(Gps.pos, target);
         if (m <= NEAR) {
-            return { :text => label.equals("stop") ? "at stop" : "here", :angle => null };
+            return { :text => label.equals("stop") ? "at stop" : "here", :dot => true };
         }
         var b = Gps.bearing(Gps.pos, target);
+        var text = dist(m) + " to " + label;
         var h = heading();
         if (h == null) {
-            return { :text => compass(b) + " " + dist(m) + " to " + label, :angle => null };
+            return { :text => text, :letter => compass(b) };
         }
-        return { :text => dist(m) + " to " + label, :angle => b - h };
+        return { :text => text, :angle => b - h };
     }
 
     // "45m", "180m", "1.2km", "12km".
@@ -106,45 +107,75 @@ module Arrow {
 
     function compass(deg as Float) as String {
         var names = ["N", "NE", "E", "SE", "S", "SW", "W", "NW"];
-        var i = (((deg + 22.5) / 45.0).toNumber()) % 8;
+        var d = deg;
+        while (d < 0) {
+            d += 360.0;
+        }
+        var i = (((d + 22.5) / 45.0).toNumber()) % 8;
         return names[i];
     }
 
-    // Arrow of radius ~r centred at (cx, cy), rotated clockwise by deg
+    // Arrow with every vertex within a of (cx, cy), rotated clockwise by deg
     // (0 = straight up = ahead).
-    function draw(dc as Graphics.Dc, cx as Number, cy as Number, r as Number, deg as Float) as Void {
-        var a = deg * Math.PI / 180.0;
-        var c = Math.cos(a);
-        var sn = Math.sin(a);
-        var shape = [[0, -r], [r * 3 / 4, r], [0, r / 2], [-r * 3 / 4, r]];
+    function draw(dc as Graphics.Dc, cx as Float, cy as Float, a as Float, deg as Float) as Void {
+        var rad = deg * Math.PI / 180.0;
+        var c = Math.cos(rad);
+        var sn = Math.sin(rad);
+        // Tip, right wing, notch, left wing; wings at +-140 deg from the tip.
+        var shape = [[0.0, -a], [0.643 * a, 0.766 * a], [0.0, 0.36 * a], [-0.643 * a, 0.766 * a]];
         var pts = [];
         for (var i = 0; i < shape.size(); i += 1) {
             var x = shape[i][0];
             var y = shape[i][1];
-            pts.add([(cx + x * c - y * sn + 0.5).toNumber(), (cy + x * sn + y * c + 0.5).toNumber()]);
+            pts.add([Math.round(cx + x * c - y * sn).toNumber(), Math.round(cy + x * sn + y * c).toNumber()]);
         }
         dc.fillPolygon(pts);
     }
 
-    // One row at y: [arrow] text, left-aligned in the row's span.
-    // Returns true when something was drawn.
-    function drawRow(dc as Graphics.Dc, y as Number, font, indent as Number, reply, now as Number) as Boolean {
-        var st = state(reply, now);
+    // The subscreen circle: [cx, cy, radius] or null. getSubscreen() gives
+    // its bounding box; the visible window is the inscribed circle.
+    function circle() {
+        var b = Layout.subscreen();
+        if (b == null || b.width < 20 || b.height < 20) {
+            return null;
+        }
+        var w = b.width < b.height ? b.width : b.height;
+        return [b.x + b.width / 2.0, b.y + b.height / 2.0, w / 2.0];
+    }
+
+    // Arrow / compass letter / dot centred in the subscreen circle, kept
+    // MARGIN px inside its edge.
+    const MARGIN = 3;
+
+    function drawCircle(dc as Graphics.Dc, st) as Void {
+        var c = circle();
+        if (st == null || c == null) {
+            return;
+        }
+        var cx = c[0] as Float;
+        var cy = c[1] as Float;
+        // One more px for the polygon's rounding to whole pixels.
+        var a = (c[2] as Float) - MARGIN - 1;
+        dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
+        if (st[:angle] != null) {
+            draw(dc, cx, cy, a, st[:angle] as Float);
+        } else if (st[:letter] != null) {
+            dc.drawText(cx.toNumber(), cy.toNumber(), Graphics.FONT_MEDIUM, st[:letter] as String,
+                Graphics.TEXT_JUSTIFY_CENTER | Graphics.TEXT_JUSTIFY_VCENTER);
+        } else if (st[:dot] == true) {
+            dc.fillCircle(cx.toNumber(), cy.toNumber(), (a / 3).toNumber());
+        }
+    }
+
+    // Distance row at y, left-aligned in the row's span. True when drawn.
+    function drawRow(dc as Graphics.Dc, y as Number, font, indent as Number, st) as Boolean {
         if (st == null) {
             return false;
         }
         var h = dc.getFontHeight(font);
         var sp = Layout.span(dc, y, h);
         var x = sp[0] + indent;
-        var maxW = sp[1] - x;
-        var text = st[:text] as String;
-        if (st[:angle] != null) {
-            var r = 7;
-            draw(dc, x + r, y + h / 2, r, st[:angle] as Float);
-            x += 2 * r + 5;
-            maxW -= 2 * r + 5;
-        }
-        dc.drawText(x, y, font, Layout.fit(dc, text, font, maxW), Graphics.TEXT_JUSTIFY_LEFT);
+        dc.drawText(x, y, font, Layout.fit(dc, st[:text] as String, font, sp[1] - x), Graphics.TEXT_JUSTIFY_LEFT);
         return true;
     }
 }

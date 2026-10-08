@@ -28,7 +28,7 @@ module Store {
 
     // Arrow on TripView (menu toggle). Default on.
     function arrowOn() as Boolean {
-        return Storage.getValue("arrow") != false;
+        return Storage.getValue("arrow") == true;  // default Off
     }
 
     function setArrow(on as Boolean) as Void {

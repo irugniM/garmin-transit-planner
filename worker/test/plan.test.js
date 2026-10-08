@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { toSecs } from '../src/plan.js';
 import {
   alertDetail, alertFor, bestWalk, compactAlerts, compactItems, hereReply, hhmm, itineraryLines, legStops, metres, splitHeadsign,
-  trimPlan, HERE_M, MAX_LINE, MAX_REPLY,
+  trimPlan, HARD_MAX, HERE_M, MAX_LINE, MAX_REPLY,
 } from '../src/plan.js';
 
 const fx = (n) => JSON.parse(readFileSync(new URL(`./fixtures/${n}.json`, import.meta.url), 'utf8'));
@@ -781,4 +781,44 @@ test('pts: first boarding stop, its departure, and the destination (5 dp)', () =
       assert.ok(x.pts && Buffer.byteLength(JSON.stringify(x)) <= MAX_REPLY);
     }
   }
+});
+
+// ---- hard cap: very long trips ----------------------------------------------
+
+// n bus legs, every stop with a code and a long public-style name.
+function longTrip(n) {
+  const streets = ['Richmond', 'Dundas', 'Oxford', 'Adelaide', 'Wellington', 'Highbury', 'Commissioners', 'Fanshawe'];
+  const t0 = T0 + 120;
+  const legs = [];
+  for (let i = 0; i < n; i += 1) {
+    const a = streets[i % streets.length];
+    const b = streets[(i + 3) % streets.length];
+    legs.push({
+      mode: 'BUS', routeShortName: String(10 + i), headsign: `${b} Terminal via ${a}`,
+      startTime: iso(t0 + i * 900), endTime: iso(t0 + i * 900 + 600),
+      from: { name: `${a} at ${b} NB - #${3000 + 2 * i}`, stopId: `L${i}a`, stopCode: String(3000 + 2 * i), lat: 42.98 + i / 1000, lon: -81.25 },
+      to: { name: `${b} at ${a} SB - #${3001 + 2 * i}`, stopId: `L${i}b`, stopCode: String(3001 + 2 * i), lat: 42.985 + i / 1000, lon: -81.25 },
+    });
+  }
+  return { startTime: legs[0].startTime, endTime: legs[n - 1].endTime, transfers: n - 1, legs };
+}
+
+test('hard cap: over 600 B with nothing left to drop is still ok up to 1200 B; over that "Trip too long"', () => {
+  const to = { lat: 43.00129, lon: -81.27883 };
+  assert.equal(HARD_MAX, 1200);
+  // A 6-transfer trip like the long real ones: trimmed, over 600 B, still ok.
+  const r = trimPlan({ itineraries: [longTrip(7)] }, { t: T0, to });
+  checkShape(r);
+  const n = Buffer.byteLength(JSON.stringify(r));
+  assert.ok(n > MAX_REPLY && n <= HARD_MAX, String(n));
+  assert.equal(r.xfers, 6);
+  assert.ok(r.lines.filter((l) => l.startsWith('Bus ')).length === 7);
+  // Far too many legs: even the must-keep lines are over 1200 B.
+  const big = trimPlan({ itineraries: [longTrip(20)] }, { t: T0, to });
+  assert.deepEqual(big, { v: 1, ok: false, err: 'Trip too long' });
+  // The cap is checked after trimming, not on the untrimmed reply.
+  const untrimmed = trimPlan({ itineraries: [longTrip(7)] }, { t: T0, to, maxBytes: 1e6, hardMax: 1e6 });
+  assert.ok(Buffer.byteLength(JSON.stringify(untrimmed)) > n);
+  assert.equal(trimPlan({ itineraries: [longTrip(7)] }, { t: T0, to, hardMax: n }).ok, true);
+  assert.equal(trimPlan({ itineraries: [longTrip(7)] }, { t: T0, to, hardMax: n - 1 }).err, 'Trip too long');
 });

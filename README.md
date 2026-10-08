@@ -94,7 +94,10 @@ Reply (times are America/Toronto, lines are at most 18 characters):
 - There is no line limit; if a reply would pass 600 bytes, the walk line, the
   single-bus alternative, headsign lines (middle legs first), Off stop names,
   then `Leave` are dropped, never the transfer count, Board and its stop name,
-  Bus, Off, closure notes, the last walk or Arrive.
+  Bus, Off, closure notes, the last walk or Arrive. If what's left is still
+  over 1200 bytes (very long trips, e.g. 6+ transfers with names), the reply is
+  `{"ok":false,"err":"Trip too long"}`; between 600 and 1200 bytes it is sent
+  as is (the watch reads 8 KB fine).
 - If a stop you board at or get off at is closed for that route (LTC alerts
   feed), a line right under its `Walk .. to #X` / `Board at #X` / `Off #X`
   line (after the stop name line, if any) says where to go: `Temp stop 130m W`, `Temp 2 poles S`,
@@ -123,7 +126,7 @@ Reply (times are America/Toronto, lines are at most 18 characters):
 
 Errors are `{"v":1,"ok":false,"err":"..."}` with HTTP 200 so the watch can show
 the text: `Bad token`, `Token not set`, `Bad params`, `Home not set`,
-`Transitous down`, `No trips found`.
+`Transitous down`, `No trips found`, `Trip too long`.
 
 Alerts: the Worker reads LTC's `Alerts.json` (plain http; https on that host is
 broken), keeps a compact stop map for 60 s (Cache API plus an in-memory copy,
@@ -181,18 +184,22 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
 ### Screens and buttons
 
 - Menu: **To School**, **To Home**, **Arrow: On/Off** (toggle, saved in
-  Storage, default On), **Test connection**. UP/DOWN move, START opens.
+  Storage, default Off), **Test connection**. UP/DOWN move, START opens.
 - Trip: the top shows `Leave in N min` (from the reply's `leave`), then the alert
   line (if any), the steps, and `next` (`Next bus hh:mm`). UP/DOWN scroll, START refreshes,
   BACK returns to the menu.
-- Arrow (when On and the reply has `pts`): a row above the steps with an arrow
-  and the distance (`180m to stop`, `1.2km to dest`) from the current position
-  to the first boarding stop, until its bus leaves or you're within 30 m
-  (`at stop`); then to the destination. The arrow turns with the compass
-  heading (`Sensor` heading, else the GPS heading while moving at 1 m/s or
-  more); with no heading it shows the bearing as a letter (`NE 180m to stop`).
-  While TripView is open, location events stay on (continuous, about 1 Hz) and
-  the screen redraws every second; leaving the view turns both off. Needs the
+- Arrow (when On and the reply has `pts`): a filled arrow in the top-right
+  subscreen circle (from `WatchUi.getSubscreen()`, kept 3 px inside the circle)
+  points from the current position to the first boarding stop, until its bus
+  leaves or you're within 30 m; then to the destination. It turns with the
+  compass heading (`Sensor` heading, else the GPS heading while moving at
+  1 m/s or more); with no heading the circle shows the bearing as a letter
+  (`NE`), and within 30 m a dot. A text row above the steps gives the
+  distance: `180m to stop`, `1.2km to dest`, `at stop`. While TripView is open,
+  location events stay on (continuous, about 1 Hz) and the screen redraws
+  every second; leaving the view turns both off. With the Arrow Off the circle
+  stays empty, there is no distance row, and neither continuous location nor
+  the compass is used (only the one-shot fix for the request). Needs the
   `Sensor` permission for the compass.
 - Position: uses the last known position right away, keeps a GPS fix running
   until accuracy is USABLE or better, and re-asks once if the better fix is more
@@ -205,7 +212,8 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
 - Test connection calls `/v1/ping` and shows `Connection OK` with the round trip
   time, or the error.
 - Debug builds only: **Demo screens** (START cycles through every screen state
-  with fake data, including six arrow states with a fake heading) and **Fake GPS**
+  with fake data, including nine arrow states with a fake heading: N/E/S/W, diagonal, compass
+  letter, at stop, Arrow Off, scrolled) and **Fake GPS**
   (a fixed public spot at Western University, for the simulator).
 
 Depart-now only in v1; the Worker already supports `mode=arrive`.

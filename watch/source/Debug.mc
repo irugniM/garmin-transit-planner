@@ -12,10 +12,12 @@ import Toybox.WatchUi;
 (:debug)
 module Debug {
     var fake = false;
-    const DEMO_COUNT = 21;
-    // Arrow demos: fake compass heading (radians; null = none).
+    const DEMO_COUNT = 24;
+    // Arrow demos: fake compass heading (radians; null = none), and the
+    // Arrow setting they show (On, except the "Arrow Off" demo).
     var arrowDemo = false;
     var head = null;
+    var arrowSet = true;
 
     function fakePos() {
         return fake ? [43.0102d, -81.2732d] : null;
@@ -23,6 +25,10 @@ module Debug {
 
     function heading(real) {
         return arrowDemo ? head : real;
+    }
+
+    function arrowOn(real as Boolean) as Boolean {
+        return arrowDemo ? arrowSet : real;
     }
 
     function menuItems(base as Array) as Array {
@@ -66,22 +72,32 @@ module Debug {
         return r;
     }
 
-    // Arrow demo i: [name, position, heading in degrees or null, bus in secs].
+    // Arrow demo i: [name, position, heading in degrees or null, bus in
+    // secs, Arrow setting]. The arrow in the circle turns by bearing - heading.
     function arrowCase(i as Number) as Array {
+        // 180 m due S of the stop: the stop is straight N.
+        var s = [STOP[0] - 0.00162d, STOP[1]];
         // ~130 m S and ~125 m W of the stop: 180 m to the NE.
         var sw = [STOP[0] - 0.00117d, STOP[1] - 0.00153d];
         if (i == 0) {
-            return ["arrow 180m to stop, facing N", sw, 0, 600];
+            return ["circle arrow N: stop N, facing N", s, 0, 600, true];
         } else if (i == 1) {
-            return ["arrow 180m to stop, facing E", sw, 90, 600];
+            return ["circle arrow E: stop N, facing W", s, 270, 600, true];
         } else if (i == 2) {
-            return ["arrow 1.2km to dest after the bus left, facing SSW", [SCHOOL[0] + 0.0108d, SCHOOL[1]], 200, -60];
+            return ["circle arrow S: stop N, facing S", s, 180, 600, true];
         } else if (i == 3) {
-            return ["arrow at stop", [STOP[0] + 0.0001d, STOP[1]], 0, 600];
+            return ["circle arrow W: stop N, facing E", s, 90, 600, true];
         } else if (i == 4) {
-            return ["arrow no heading: compass letter", sw, null, 600];
+            // ~850 m N and ~850 m E of the school, bus gone: dest to the SW.
+            return ["circle arrow NE: 1.2km to dest after the bus left, facing S", [SCHOOL[0] + 0.0076d, SCHOOL[1] + 0.0105d], 180, -60, true];
+        } else if (i == 5) {
+            return ["circle letter: no heading", sw, null, 600, true];
+        } else if (i == 6) {
+            return ["circle dot: at stop", [STOP[0] + 0.0001d, STOP[1]], 0, 600, true];
+        } else if (i == 7) {
+            return ["Arrow Off: circle empty, no distance row", sw, 0, 600, false];
         }
-        return ["arrow 45m to stop, facing W, scrolled", [STOP[0] - 0.0004d, STOP[1]], 270, 600];
+        return ["circle arrow, 45m to stop, facing W, scrolled", [STOP[0] - 0.0004d, STOP[1]], 270, 600, true];
     }
 
     function apply(v as TripView) as Void {
@@ -140,10 +156,11 @@ module Debug {
             Gps.pos = c[1];
             Gps.quality = Position.QUALITY_GOOD;
             head = c[2] == null ? null : (c[2] as Number) * Math.PI / 180.0;
+            arrowSet = c[4] as Boolean;
             v.reply = arrowReply(c[3] as Number);
             v.gotAt = Time.now().value();
             v.state = TripView.S_OK;
-            v.scroll = i == 20 ? 3 : 0;
+            v.scroll = i == 23 ? 3 : 0;
         } else {
             name = "ping OK";
             v.mode = TripView.MODE_PING;
@@ -151,8 +168,8 @@ module Debug {
             v.pingT = Time.now().value();
             v.state = TripView.S_PING_OK;
         }
-        var st = Arrow.state(v.reply, Time.now().value());
-        System.println("LTCTrip demo " + i + ": " + name + " | " + (st != null ? "arrow " + st[:text] + " angle " + st[:angle] + " | " : "") + v.bodyLines().toString());
+        var st = v.arrowWanted() ? Arrow.state(v.reply, Time.now().value()) : null;
+        System.println("LTCTrip demo " + i + ": " + name + " | " + (st != null ? "arrow " + st[:text] + " angle " + st[:angle] + " letter " + st[:letter] + " dot " + st[:dot] + " | " : "") + v.bodyLines().toString());
         WatchUi.requestUpdate();
     }
 }
@@ -164,6 +181,10 @@ module Debug {
     }
 
     function heading(real) {
+        return real;
+    }
+
+    function arrowOn(real as Boolean) as Boolean {
         return real;
     }
 

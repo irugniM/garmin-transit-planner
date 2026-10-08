@@ -450,7 +450,10 @@ export function legStops(it) {
   return out;
 }
 
-export const MAX_REPLY = 600; // bytes; the watch handles this comfortably
+export const MAX_REPLY = 600; // bytes; above this, optional lines are dropped
+// Hard cap: when the must-keep lines alone are over this (very long trips),
+// the reply is an error instead. The simulator read 8 KB fine.
+export const HARD_MAX = 1200;
 
 const r5 = (x) => Math.round(Number(x) * 1e5) / 1e5;
 const ll = (p) => (p && Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lon)) && p.lat !== null && p.lon !== null
@@ -473,9 +476,10 @@ export function ptsFor(chosen, to) {
 }
 
 // Build the reply object. `alerts` is the compact map from compactAlerts().
+// Optional lines go above `maxBytes`; still over `hardMax`: "Trip too long".
 // `t` is the query time (depart: leave at, arrive: arrive by).
 // `to` is the destination { lat, lon } (for `pts`).
-export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY, to = null } = {}) {
+export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY, hardMax = HARD_MAX, to = null } = {}) {
   const its = Array.isArray(tq?.itineraries) ? tq.itineraries : [];
   const { chosen, other } = chooseItinerary(its, mode, t);
   const walk = bestWalk(tq);
@@ -536,6 +540,7 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
   if (reply.xfers > 0) items.push(...altItems(its, chosen, mode, t));
   if (walkLine) items.push({ k: 'walkalt', t: walkNote(w, mode) });
   reply.lines = compactItems(items, (lines) => byteLen({ ...reply, lines }) <= maxBytes);
+  if (byteLen(reply) > hardMax) return errorReply('Trip too long');
   return reply;
 }
 

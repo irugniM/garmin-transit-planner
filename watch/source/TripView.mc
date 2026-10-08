@@ -54,7 +54,7 @@ class TripView extends WatchUi.View {
     // The arrow redraws every second (compass) and keeps GPS events on;
     // without it, a redraw every 20 s for the countdown is enough.
     function arrowWanted() as Boolean {
-        return mode != MODE_PING && Store.arrowOn();
+        return mode != MODE_PING && Debug.arrowOn(Store.arrowOn());
     }
 
     function onShow() as Void {
@@ -386,9 +386,14 @@ class TripView extends WatchUi.View {
         var barTop = top;
         var list = reply != null && (state == S_OK || state == S_ERR);
         var pitch = dc.getFontHeight(f) - 3;
-        // Arrow row pinned above the scrolling lines.
-        if (list && arrowWanted() && Arrow.drawRow(dc, top, f, 8, reply, now())) {
-            top += pitch;
+        // Arrow On: the arrow in the subscreen circle, the distance pinned
+        // above the scrolling lines. Off: neither (and no compass reads).
+        if (list && arrowWanted()) {
+            var st = Arrow.state(reply, now());
+            Arrow.drawCircle(dc, st);
+            if (Arrow.drawRow(dc, top, f, 8, st)) {
+                top += pitch;
+            }
         }
         more = Layout.flow(dc, top, f, pitch, shown, !list, list ? 8 : 0);
         if (list && (more || scroll > 0)) {
