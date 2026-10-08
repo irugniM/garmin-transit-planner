@@ -55,8 +55,16 @@ export function splitHeadsign(headsign, route) {
     variant = m[1].replace(/^0+(?=\w)/, '');
     h = m[2];
   }
-  h = h.replace(/\s+via\s+.*$/i, '').replace(/^express\s+to\s+/i, '').trim();
+  h = h.replace(/\s+via\s+.*$/i, '').replace(/^express\s+to\s+/i, '').replace(/\s+only$/i, '').trim();
   return { variant, to: h };
+}
+
+// "to X" when it fits; else just "X"; else cut X at a word boundary.
+export function destLine(to, max = MAX_LINE) {
+  const s = String(to).replace(/\s+/g, ' ').trim();
+  if (s.length + 3 <= max) return `to ${s}`;
+  if (s.length <= max) return s;
+  return clipWords(s, max).replace(/\s*(&|and|-|\/)$/i, '').trimEnd();
 }
 
 function stopTag(place) {
@@ -85,7 +93,7 @@ export function itineraryLines(it) {
       let bus = `${kind} ${variant} ${hhmm(toSecs(leg.startTime))}`;
       if (leg.realTime && (bus + ' live').length <= MAX_LINE) bus += ' live';
       lines.push(clip(bus));
-      if (to) lines.push(clip(`to ${to}`));
+      if (to) lines.push(destLine(to));
       lines.push(clip(`Off ${stopTag(leg.to)} ${hhmm(toSecs(leg.endTime))}`));
     } else {
       const next = legs[i + 1];

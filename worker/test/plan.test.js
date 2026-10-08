@@ -132,3 +132,16 @@ test('alerts: active/expired/deleted, details, camelCase', () => {
     '#2003 closed: use Althouse College',
   );
 });
+
+test('headsign: drops "Only" and avoids mid-word cuts', async () => {
+  const { splitHeadsign, destLine } = await import('../src/plan.js');
+  const { to } = splitHeadsign('Dundas & Highbury Only', '2');
+  assert.equal(to, 'Dundas & Highbury');
+  assert.equal(destLine(to), 'Dundas & Highbury');
+  assert.equal(destLine('White Oaks Mall'), 'to White Oaks Mall');
+  assert.equal(destLine('Argyle Mall and Fanshawe College'), 'Argyle Mall');
+  for (const s of ['Dundas & Highbury Only', 'Fanshawe College & Oxford Street East']) {
+    const l = destLine(splitHeadsign(s, '1').to);
+    assert.ok(l.length <= 18, l);
+  }
+});
