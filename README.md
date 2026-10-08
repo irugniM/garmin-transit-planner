@@ -53,7 +53,9 @@ Reply (times are America/Toronto, lines are at most 18 characters):
 
 - Which trip: the earliest arrival, except that a trip with fewer transfers wins
   if it arrives at most 10 min later (arrive-by: leaves at most 10 min earlier
-  than the latest-leaving trip). Ties go to the earlier arrival.
+  than the latest-leaving trip). Ties go to the earlier arrival, then less
+  walking. A trip is never picked if another gets there no later (arrive-by:
+  leaves no earlier) with over 10 min less walking.
 - Line 2 (after `Leave`) is the transfer count: `No transfer`, `1 transfer`,
   `2 transfers` (not on walk-only or `You're here` replies).
 - If the trip has transfers and Transitous also found a single-bus trip (that
@@ -74,15 +76,14 @@ Reply (times are America/Toronto, lines are at most 18 characters):
 - Within 150 m of the destination the reply is `"lines":["You're here"]`
   (no Transitous call).
 - Walking: Transitous returns walk-only routes in `direct` (the Worker asks
-  for `directModes=WALK` and `maxDirectTime=3600`, i.e. walks up to an hour;
-  MOTIS' default is 30 min). When the walk gets there no later than the best bus
-  (arrive-by: lets you leave no earlier), the reply is
+  for `directModes=WALK` and `maxDirectTime=5400`, i.e. walks up to 90 min;
+  MOTIS' default is 30 min). It also allows up to 30 min of walking to the
+  first stop (`maxPreTransitTime=1800`; default 15 min). When the walk gets
+  there no later than the best bus (arrive-by: lets you leave no earlier),
+  the reply is
   `"lines":["Walk 12 min","Arrive 08:12"]`, `xfers` 0, with the bus as
   `"next":"Bus: arr 08:26"` (arrive-by: `Bus: leave 07:58`). When the bus wins
   and there is no later bus, `next` is `Walk: arr 08:40`.
-- If Transitous returns nothing at all and the destination is at most 3 km
-  away in a straight line, the reply is an estimate marked with `~`:
-  `["Walk ~17 min","Arrive ~08:16"]` (distance x 1.3 for streets, at 1.3 m/s).
 
 Errors are `{"v":1,"ok":false,"err":"..."}` with HTTP 200 so the watch can show
 the text: `Bad token`, `Token not set`, `Bad params`, `Home not set`,

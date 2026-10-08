@@ -254,33 +254,48 @@ export function bestWalk(tq) {
 // Fewer transfers win when they cost at most this much (later arrival, or
 // for arrive-by an earlier leave).
 export const XFER_SLACK = 600;
+// A trip is out if another one gets there no later (arrive-by: leaves no
+// earlier) and walks more than this much less. Keeps the long walks to a
+// first stop that maxPreTransitTime=1800 allows from beating normal trips.
+export const WALK_SLACK = 600;
+
+export function walkSecs(it) {
+  return (it.legs || []).filter((l) => !isTransit(l)).reduce((n, l) => n + legSecs(l), 0);
+}
 
 // Pick the itinerary to show.
-// depart: among trips arriving within 10 min of the earliest arrival, fewest
-//   transfers, then earliest arrival, then latest leave.
-// arrive: among trips that arrive by t (or all, if none do) and leave within
-//   10 min of the latest leave, fewest transfers, then latest leave.
+// depart: drop trips beaten on walking (above); among the rest arriving
+//   within 10 min of the earliest arrival, fewest transfers, then earliest
+//   arrival, then least walking, then latest leave.
+// arrive: among trips that arrive by t (or all, if none do), same walking
+//   rule; then leaving within 10 min of the latest leave, fewest transfers,
+//   then latest leave, then least walking.
 export function chooseItinerary(its, mode, t) {
   const list = its.filter((it) => !cancelled(it) && it.startTime && it.endTime);
   if (!list.length) return { chosen: null, other: null };
   const leave = (it) => toSecs(it.startTime);
   const arr = (it) => toSecs(it.endTime);
   const xf = (it) => it.transfers ?? Math.max(0, (it.legs || []).filter(isTransit).length - 1);
+  const w = new Map(list.map((it) => [it, walkSecs(it)]));
+  // "b is at least as good on time" for the walking rule.
+  const asGood = mode === 'arrive' ? (b, a) => leave(b) >= leave(a) : (b, a) => arr(b) <= arr(a);
+  const fair = (pool) => pool.filter((a) => !pool.some((b) => b !== a && asGood(b, a) && w.get(b) < w.get(a) - WALK_SLACK));
   let chosen;
   if (mode === 'arrive') {
     const ok = list.filter((it) => arr(it) <= t);
-    const pool = ok.length ? ok : list;
+    const pool = fair(ok.length ? ok : list);
     const latest = Math.max(...pool.map(leave));
     chosen = pool
       .filter((it) => leave(it) >= latest - XFER_SLACK)
-      .sort((a, b) => xf(a) - xf(b) || leave(b) - leave(a) || arr(b) - arr(a))[0];
+      .sort((a, b) => xf(a) - xf(b) || leave(b) - leave(a) || w.get(a) - w.get(b) || arr(b) - arr(a))[0];
     const earlier = list.filter((it) => leave(it) < leave(chosen)).sort((a, b) => leave(b) - leave(a))[0];
     return { chosen, other: earlier ? `Earlier: ${hhmm(leave(earlier))}` : null };
   }
-  const fastest = Math.min(...list.map(arr));
-  chosen = list
+  const pool = fair(list);
+  const fastest = Math.min(...pool.map(arr));
+  chosen = pool
     .filter((it) => arr(it) <= fastest + XFER_SLACK)
-    .sort((a, b) => xf(a) - xf(b) || arr(a) - arr(b) || leave(b) - leave(a))[0];
+    .sort((a, b) => xf(a) - xf(b) || arr(a) - arr(b) || w.get(a) - w.get(b) || leave(b) - leave(a))[0];
   const next = list.filter((it) => leave(it) > leave(chosen)).sort((a, b) => leave(a) - leave(b))[0];
   return { chosen, other: next ? `Next: ${hhmm(leave(next))}` : null };
 }
@@ -301,41 +316,13 @@ export function legStops(it) {
 
 export const MAX_REPLY = 600; // bytes; the watch handles this comfortably
 
-// Fallback walk estimate: streets are ~1.3x the straight line, walking ~1.3 m/s.
-export const EST_MAX_M = 3000;
-export const EST_DETOUR = 1.3;
-export const EST_SPEED = 1.3;
-
-export function estimatedWalk(distM, mode, t) {
-  const secs = Math.round((distM * EST_DETOUR) / EST_SPEED);
-  const leave = mode === 'arrive' ? t - secs : t;
-  const arr = leave + secs;
-  return {
-    v: 1,
-    ok: true,
-    leave,
-    arr,
-    rt: false,
-    xfers: 0,
-    lines: [`Walk ~${mins(secs)} min`, `Arrive ~${hhmm(arr)}`],
-    alert: null,
-    next: null,
-  };
-}
-
 // Build the reply object. `alerts` is the compact map from compactAlerts().
 // `t` is the query time (depart: leave at, arrive: arrive by).
-// `distM` (optional) is the straight-line distance to the destination; when
-// Transitous has nothing at all and it is at most EST_MAX_M, the reply is an
-// estimated walk instead of "No trips found".
-export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY, distM = null } = {}) {
+export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY } = {}) {
   const its = Array.isArray(tq?.itineraries) ? tq.itineraries : [];
   const { chosen, other } = chooseItinerary(its, mode, t);
   const walk = bestWalk(tq);
-  if (!chosen && !walk) {
-    if (Number.isFinite(distM) && distM <= EST_MAX_M && Number.isFinite(t)) return estimatedWalk(distM, mode, t);
-    return errorReply('No trips found');
-  }
+  if (!chosen && !walk) return errorReply('No trips found');
 
   let w = null;
   if (walk) {

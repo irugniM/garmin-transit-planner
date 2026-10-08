@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { toSecs } from '../src/plan.js';
 import {
   alertDetail, alertFor, bestWalk, compactAlerts, hereReply, hhmm, itineraryLines, legStops, metres, splitHeadsign,
   trimPlan, HERE_M, MAX_LINE, MAX_REPLY,
@@ -451,22 +452,56 @@ test('closure text fits 18 characters', async () => {
   }
 });
 
-test('estimated walk when Transitous has nothing within 3 km (an estimate, marked ~)', async () => {
-  const { estimatedWalk, EST_MAX_M } = await import('../src/plan.js');
-  // 1 km straight line -> 1300 m of streets at 1.3 m/s = 1000 s, about 17 min.
-  const r = trimPlan({ itineraries: [], direct: [] }, { t: T0, distM: 1000 });
-  checkShape(r);
-  assert.deepEqual(r.lines, ['Walk ~17 min', 'Arrive ~08:16']);
-  assert.equal(r.arr - r.leave, 1000);
-  assert.equal(r.leave, T0);
-  // Arrive-by: leave early enough.
-  const a = trimPlan({ itineraries: [], direct: [] }, { mode: 'arrive', t: T0, distM: 1000 });
-  assert.equal(a.arr, T0);
-  assert.equal(a.leave, T0 - 1000);
-  // Limits: 3 km yes, beyond no; Transitous answers win over the estimate.
-  assert.equal(EST_MAX_M, 3000);
-  assert.equal(trimPlan({ itineraries: [], direct: [] }, { t: T0, distM: 3000 }).ok, true);
-  assert.equal(trimPlan({ itineraries: [], direct: [] }, { t: T0, distM: 3001 }).err, 'No trips found');
-  assert.deepEqual(trimPlan({ itineraries: [], direct: [walkDirect(600)] }, { t: T0, distM: 1000 }).lines, ['Walk 10 min', 'Arrive 08:10']);
-  assert.equal(estimatedWalk(50, 'depart', T0).lines[0], 'Walk ~1 min');
+test('no estimate: nothing from Transitous is "No trips found"', () => {
+  assert.deepEqual(trimPlan({ itineraries: [], direct: [] }, { t: T0 }), { v: 1, ok: false, err: 'No trips found' });
+});
+
+// Synthetic trip with walks: [walk, bus, walk, bus, ...] from a spec list.
+function walkTrip(start, parts) {
+  let t = at(`2026-10-08T${start}:00-04:00`);
+  const legs = [];
+  let n = 0;
+  for (const p of parts) {
+    const secs = p.walk ?? p.ride;
+    const leg = p.walk !== undefined
+      ? { mode: 'WALK', duration: secs, from: { name: 'x' }, to: { name: 'y' } }
+      : { mode: 'BUS', routeShortName: p.route, headsign: 'Somewhere', from: { stopId: `S${p.route}a${n}`, stopCode: '1' }, to: { stopId: `S${p.route}b${n++}`, stopCode: '2' } };
+    leg.startTime = iso(t);
+    t += secs;
+    leg.endTime = iso(t);
+    legs.push(leg);
+  }
+  const buses = legs.filter((l) => l.mode === 'BUS').length;
+  return { startTime: legs[0].startTime, endTime: legs.at(-1).endTime, transfers: Math.max(0, buses - 1), legs };
+}
+
+test('choice: a long first walk does not beat a normal trip that is as fast with much less walking', () => {
+  // Normal: 1 transfer, 5 min walking, arrives 08:38.
+  const normal = walkTrip('08:00', [{ walk: 180 }, { ride: 900, route: '10' }, { ride: 1080, route: '27' }, { walk: 120 }, ]);
+  // Long first walk (allowed by maxPreTransitTime=1800): direct bus, 27 min
+  // walking, arrives 08:38 as well.
+  const longWalk = walkTrip('07:51', [{ walk: 1500 }, { ride: 1200, route: '9' }, { walk: 120 }]);
+  assert.equal(hhmm(toSecs(normal.endTime)), hhmm(toSecs(longWalk.endTime)));
+  let r = trimPlan({ itineraries: [longWalk, normal] }, { t: T0 });
+  assert.equal(r.xfers, 1, 'the normal trip wins despite the transfer');
+  assert.equal(r.lines[2], 'Walk 3m to #1');
+  // ...also when the long walk arrives a little later.
+  const longLater = walkTrip('07:55', [{ walk: 1500 }, { ride: 1200, route: '9' }, { walk: 120 }]);
+  assert.equal(trimPlan({ itineraries: [longLater, normal] }, { t: T0 }).xfers, 1);
+  // A long walk that gets there clearly earlier is still fine to pick.
+  const longEarly = walkTrip('07:30', [{ walk: 1500 }, { ride: 900, route: '9' }, { walk: 120 }]);
+  assert.equal(trimPlan({ itineraries: [longEarly, normal] }, { t: T0 }).xfers, 0);
+  // A direct bus with a bit more walking (under 10 min extra) still beats a transfer.
+  const directBitMore = walkTrip('08:05', [{ walk: 540 }, { ride: 1500, route: '9' }, { walk: 120 }]); // 08:41
+  assert.equal(hhmm(toSecs(directBitMore.endTime)), '08:41');
+  r = trimPlan({ itineraries: [normal, directBitMore] }, { t: T0 });
+  assert.equal(r.xfers, 0);
+  // Same transfers and arrival: less walking wins.
+  const a = walkTrip('08:00', [{ walk: 600 }, { ride: 1500, route: '9' }, { walk: 300 }]);
+  const b = walkTrip('08:05', [{ walk: 120 }, { ride: 1680, route: '9' }, { walk: 300 }]);
+  assert.equal(a.endTime, b.endTime);
+  assert.equal(hhmm(trimPlan({ itineraries: [a, b] }, { t: T0 }).leave), '08:05');
+  // Arrive-by: the long first walk leaving earlier loses to a normal trip leaving no earlier.
+  const by = at('2026-10-08T08:45:00-04:00');
+  assert.equal(trimPlan({ itineraries: [longWalk, normal] }, { mode: 'arrive', t: by }).xfers, 1);
 });

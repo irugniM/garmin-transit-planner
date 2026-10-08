@@ -9,7 +9,8 @@ export const TRANSITOUS = 'https://api.transitous.org/api/v5/plan';
 // HTTPS on this host is broken; plain http is the only working option.
 export const ALERTS_URL = 'http://gtfs.ltconline.ca/Alert/Alerts.json';
 export const ALERTS_TTL = 60;
-export const MAX_DIRECT_WALK = 3600; // seconds
+export const MAX_DIRECT_WALK = 5400; // seconds
+export const MAX_FIRST_WALK = 1800; // seconds
 
 // School: Sarnia Rd at Western Rd (public LTC stops #1646 EB / #1647 WB).
 // Home comes from the HOME_LATLON secret and is never in the code.
@@ -122,8 +123,7 @@ export async function planTrip(params, env, deps) {
     if (!to) return errorReply('Home not set');
   }
   // Already there: no need to ask Transitous.
-  const distM = metres({ lat, lon }, to);
-  if (distM <= HERE_M) return hereReply(now);
+  if (metres({ lat, lon }, to) <= HERE_M) return hereReply(now);
 
   const u = new URL(TRANSITOUS);
   u.searchParams.set('fromPlace', `${lat.toFixed(5)},${lon.toFixed(5)}`);
@@ -134,10 +134,11 @@ export async function planTrip(params, env, deps) {
   // Walk-only connections come back separately in `direct`. WALK is MOTIS'
   // default, but ask explicitly so a default change can't drop them.
   u.searchParams.set('directModes', 'WALK');
-  // MOTIS caps direct walks at 30 min by default; a longer walk home late at
-  // night beats "No trips found". (Pre/post-transit walks keep their 15 min
-  // defaults.)
+  // MOTIS caps direct walks at 30 min and the walk to the first stop at
+  // 15 min by default. Late at night a long walk (or a far first stop) beats
+  // "No trips found". The walk from the last stop keeps its default.
   u.searchParams.set('maxDirectTime', String(MAX_DIRECT_WALK));
+  u.searchParams.set('maxPreTransitTime', String(MAX_FIRST_WALK));
 
   const alertsP = loadAlerts(deps);
   let tq;
@@ -152,7 +153,7 @@ export async function planTrip(params, env, deps) {
     return errorReply('Transitous down');
   }
   const alerts = await alertsP;
-  return trimPlan(tq, { mode, t, alerts, distM });
+  return trimPlan(tq, { mode, t, alerts });
 }
 
 export async function handle(request, env, deps) {
