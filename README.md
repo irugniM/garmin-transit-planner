@@ -6,7 +6,7 @@ Cloudflare Worker it talks to.
 
 - `watch/`: Connect IQ device app for the Instinct 3 Solar 45mm (`instinct3solar45mm`).
 - `worker/`: Cloudflare Worker. It asks [Transitous](https://transitous.org/) for a
-  trip, trims the answer to about 200–320 bytes of display-ready text and adds
+  trip, trims the answer to about 200–500 bytes of display-ready text and adds
   LTC stop-closure alerts.
 
 ```
@@ -45,11 +45,35 @@ Reply (times are America/Toronto, lines are at most 18 characters):
 
 ```json
 {"v":1,"ok":true,"leave":1791460860,"arr":1791462360,"rt":false,"xfers":1,
- "lines":["Leave 08:01","Walk 1m to #1143","Bus 13A 08:02","to White Oaks Mall",
+ "lines":["Leave 08:01","1 transfer","Walk 1m to #1143","Bus 13A 08:02","to White Oaks Mall",
           "Off #509 08:11","Walk 2m to #1173","Bus 27 08:15","to Capulet Lane",
-          "Off #1647 08:23","Arrive 08:26"],
+          "Off #1647 08:23","Walk 3m","Arrive 08:26"],
  "alert":"#1647 closed: temp stop 130m W","next":"Next: 08:10"}
 ```
+
+- Which trip: the earliest arrival, except that a trip with fewer transfers wins
+  if it arrives at most 10 min later (arrive-by: leaves at most 10 min earlier
+  than the latest-leaving trip). Ties go to the earlier arrival.
+- Line 2 (after `Leave`) is the transfer count: `No transfer`, `1 transfer`,
+  `2 transfers` (not on walk-only or `You're here` replies).
+- If the trip has transfers and Transitous also found a single-bus trip (that
+  arrives over 10 min later), two optional lines follow `Arrive`:
+  `Direct 9 05:58`, `arr 06:16`.
+- Every bus has a line naming where to board just before it (`Walk 1m to #1143`,
+  or `Board at #1143` when there is no walk), except a transfer at the same stop
+  the previous bus left you at (its `Off #1234` line names it). Every bus has its
+  `Off` line, and a trip ends with the final walk and `Arrive`. There is no line
+  limit; if a reply would pass 600 bytes, the single-bus alternative, then
+  headsign lines (middle legs first), then `Leave` are dropped, never the
+  transfer count, Board, Bus, Off, the last walk or Arrive.
+- Within 150 m of the destination the reply is `"lines":["You're here"]`
+  (no Transitous call).
+- Walking: Transitous returns walk-only routes in `direct` (the Worker asks
+  for `directModes=WALK`). When the walk gets there no later than the best bus
+  (arrive-by: lets you leave no earlier), the reply is
+  `"lines":["Walk 12 min","Arrive 08:12"]`, `xfers` 0, with the bus as
+  `"next":"Bus: arr 08:26"` (arrive-by: `Bus: leave 07:58`). When the bus wins
+  and there is no later bus, `next` is `Walk: arr 08:40`.
 
 Errors are `{"v":1,"ok":false,"err":"..."}` with HTTP 200 so the watch can show
 the text: `Bad token`, `Token not set`, `Bad params`, `Home not set`,

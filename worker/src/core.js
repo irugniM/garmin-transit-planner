@@ -1,7 +1,7 @@
 // LTCTrip Worker logic: GET /v1/plan and GET /v1/ping. See ../../README.md.
 // The Worker entry (index.js) may only export handlers, so the testable
 // pieces live here.
-import { compactAlerts, errorReply, trimPlan } from './plan.js';
+import { compactAlerts, errorReply, hereReply, metres, trimPlan, HERE_M } from './plan.js';
 
 export const VERSION = '0.1';
 export const USER_AGENT = `LTCTrip/${VERSION} (+https://github.com/irugniM)`;
@@ -120,6 +120,8 @@ export async function planTrip(params, env, deps) {
     to = parseLatLon(env.HOME_LATLON);
     if (!to) return errorReply('Home not set');
   }
+  // Already there: no need to ask Transitous.
+  if (metres({ lat, lon }, to) <= HERE_M) return hereReply(now);
 
   const u = new URL(TRANSITOUS);
   u.searchParams.set('fromPlace', `${lat.toFixed(5)},${lon.toFixed(5)}`);
@@ -127,6 +129,9 @@ export async function planTrip(params, env, deps) {
   u.searchParams.set('time', new Date(Math.floor(t) * 1000).toISOString());
   u.searchParams.set('arriveBy', mode === 'arrive' ? 'true' : 'false');
   u.searchParams.set('numItineraries', '3');
+  // Walk-only connections come back separately in `direct`. WALK is MOTIS'
+  // default, but ask explicitly so a default change can't drop them.
+  u.searchParams.set('directModes', 'WALK');
 
   const alertsP = loadAlerts(deps);
   let tq;

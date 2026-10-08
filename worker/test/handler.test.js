@@ -43,7 +43,9 @@ test('plan to school: Transitous query and trimmed reply', async () => {
   const r = await call(`${BASE}&dest=school`, { fetchImpl: f });
   assert.equal(r.status, 200);
   assert.equal(r.body.ok, true);
-  assert.equal(r.body.alert, '#1647 closed: temp stop 130m W');
+  // The single bus at 08:10 (1 min later than the transfer trip) is chosen.
+  assert.equal(r.body.xfers, 0);
+  assert.equal(r.body.alert, '#2003 closed: use Althouse College');
   console.log(`  /v1/plan reply bytes: ${r.bytes}`);
   const tq = f.calls.find((c) => c.url.startsWith('https://api.transitous.org/'));
   const u = new URL(tq.url);
@@ -53,6 +55,7 @@ test('plan to school: Transitous query and trimmed reply', async () => {
   assert.equal(u.searchParams.get('arriveBy'), 'false');
   assert.equal(u.searchParams.get('numItineraries'), '3');
   assert.equal(u.searchParams.get('time'), '2026-10-08T12:00:00.000Z');
+  assert.equal(u.searchParams.get('directModes'), 'WALK');
   assert.equal(tq.init.headers['User-Agent'], USER_AGENT);
   assert.equal(USER_AGENT, 'LTCTrip/0.1 (+https://github.com/irugniM)');
 });
@@ -60,7 +63,8 @@ test('plan to school: Transitous query and trimmed reply', async () => {
 test('plan home uses HOME_LATLON and arrive-by', async () => {
   const f = fakeFetch({ plan: 'school_to_masonville_1600' });
   const t = at('2026-10-08T16:40:00-04:00');
-  const r = await call(`${BASE}&dest=home&mode=arrive&t=${t}`, { fetchImpl: f });
+  // From the school stop (the test home is Masonville).
+  const r = await call(`https://w.example/v1/plan?lat=43.00129&lon=-81.27883&k=test-token&dest=home&mode=arrive&t=${t}`, { fetchImpl: f });
   assert.equal(r.body.ok, true);
   const u = new URL(f.calls.find((c) => c.url.includes('transitous')).url);
   assert.equal(u.searchParams.get('toPlace'), '43.02566,-81.2815');
@@ -115,7 +119,7 @@ test('alerts feed unreachable: plan still works, alert null, retry after 30 s', 
   assert.equal(f.calls.filter((c) => c.url === ALERTS_URL).length, 1, 'no refetch within 30 s');
   const ok = fakeFetch();
   const r2 = await call(`${BASE}&dest=school`, { fetchImpl: ok, now: NOW + 31 });
-  assert.equal(r2.body.alert, '#1647 closed: temp stop 130m W');
+  assert.equal(r2.body.alert, '#2003 closed: use Althouse College');
 });
 
 test('alerts cached for 60 s (memory and Cache API)', async () => {
@@ -139,4 +143,29 @@ test('unknown path is 404 JSON', async () => {
   const r = await call('https://w.example/');
   assert.equal(r.status, 404);
   assert.equal(r.body.ok, false);
+});
+
+test('at the destination: "You\'re here" without calling Transitous', async () => {
+  const f = fakeFetch();
+  // About 15 m from the school stop.
+  const r = await call('https://w.example/v1/plan?lat=43.00140&lon=-81.27890&k=test-token&dest=school', { fetchImpl: f });
+  assert.deepEqual(r.body, { v: 1, ok: true, leave: NOW, arr: NOW, rt: false, xfers: 0, lines: ["You're here"], alert: null, next: null });
+  assert.equal(f.calls.length, 0);
+  // Home works the same way (test home is Masonville; BASE is ~15 m from it).
+  assert.deepEqual((await call(`${BASE}&dest=home`, { fetchImpl: f })).body.lines, ["You're here"]);
+  // ~170 m away is not "here".
+  const far = await call('https://w.example/v1/plan?lat=43.00282&lon=-81.27883&k=test-token&dest=school', { fetchImpl: fakeFetch() });
+  assert.notDeepEqual(far.body.lines, ["You're here"]);
+});
+
+test('walk-only reply when Transitous has only `direct`', async () => {
+  const walk = {
+    duration: 480, startTime: '2026-10-08T12:00:00Z', endTime: '2026-10-08T12:08:00Z',
+    legs: [{ mode: 'WALK', duration: 480, startTime: '2026-10-08T12:00:00Z', endTime: '2026-10-08T12:08:00Z' }],
+  };
+  const f = async (url) => new Response(String(url) === ALERTS_URL ? '{"entity":[]}' : JSON.stringify({ itineraries: [], direct: [walk] }));
+  const r = await call(`${BASE}&dest=school`, { fetchImpl: f });
+  assert.deepEqual(r.body, {
+    v: 1, ok: true, leave: NOW, arr: NOW + 480, rt: false, xfers: 0, lines: ['Walk 8 min', 'Arrive 08:08'], alert: null, next: null,
+  });
 });

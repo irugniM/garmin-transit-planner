@@ -80,55 +80,166 @@ function cancelled(it) {
   return (it.legs || []).some((l) => l.cancelled === true || l.from?.cancelled === true || l.to?.cancelled === true);
 }
 
-export function itineraryLines(it) {
-  const lines = [];
-  const legs = it.legs || [];
-  lines.push(`Leave ${hhmm(toSecs(it.startTime))}`);
-  for (let i = 0; i < legs.length; i++) {
-    const leg = legs[i];
-    if (isTransit(leg)) {
-      const route = routeLabel(leg);
-      const { variant, to } = splitHeadsign(leg.headsign, route);
-      const kind = leg.mode === 'BUS' ? 'Bus' : leg.mode[0] + leg.mode.slice(1).toLowerCase();
-      let bus = `${kind} ${variant} ${hhmm(toSecs(leg.startTime))}`;
-      if (leg.realTime && (bus + ' live').length <= MAX_LINE) bus += ' live';
-      lines.push(clip(bus));
-      if (to) lines.push(destLine(to));
-      lines.push(clip(`Off ${stopTag(leg.to)} ${hhmm(toSecs(leg.endTime))}`));
-    } else {
-      const next = legs[i + 1];
-      if (next && isTransit(next)) {
-        const prev = legs[i - 1];
-        const sameStop = prev && prev.to?.stopId && prev.to.stopId === next.from?.stopId;
-        if (!sameStop) lines.push(clip(`Walk ${mins(leg.duration)}m to ${stopTag(next.from)}`));
-      } else if (!next && i === 0) {
-        lines.push(clip(`Walk ${mins(leg.duration)}m`));
-      }
-    }
-  }
-  lines.push(`Arrive ${hhmm(toSecs(it.endTime))}`);
-  return lines;
+function legSecs(leg) {
+  const d = Number(leg.duration);
+  if (Number.isFinite(d)) return Math.max(0, d);
+  if (leg.startTime && leg.endTime) return Math.max(0, toSecs(leg.endTime) - toSecs(leg.startTime));
+  return 0;
 }
 
+// Lines for one itinerary, each tagged with a kind so trimPlan can shorten
+// long trips from the middle:
+//   leave, xfer ("No transfer", "1 transfer", "2 transfers"; trips with a
+//   bus only), board ("Walk 6m to #1234" or "Board at #1234"), bus, to
+//   (headsign), off, walkEnd (walk after the last bus), walk (walk-only
+//   trip), arrive.
+// Every bus gets a board line naming its stop, built from the bus leg itself
+// (so a missing, split or stop-less walk leg can't hide it). The only
+// exception is a transfer at the very stop the previous bus left you at: the
+// "Off #1234" line just above already names it.
+export function itineraryItems(it) {
+  const out = [];
+  const legs = it.legs || [];
+  const nBus = legs.filter(isTransit).length;
+  let busNo = 0;
+  let walkSecs = 0;
+  let walked = false;
+  let lastOff = null;
+  out.push({ k: 'leave', t: `Leave ${hhmm(toSecs(it.startTime))}` });
+  if (nBus) out.push({ k: 'xfer', t: xferText(it.transfers ?? nBus - 1) });
+  for (const leg of legs) {
+    if (!isTransit(leg)) {
+      walked = true;
+      walkSecs += legSecs(leg);
+      continue;
+    }
+    const from = leg.from || {};
+    const sameStop = busNo > 0 && lastOff && from.stopId && lastOff === from.stopId;
+    if (!sameStop) {
+      const board = walked && walkSecs > 0 ? `Walk ${mins(walkSecs)}m to ${stopTag(from)}` : `Board at ${stopTag(from)}`;
+      out.push({ k: 'board', t: clip(board), n: busNo });
+    }
+    const route = routeLabel(leg);
+    const { variant, to } = splitHeadsign(leg.headsign, route);
+    const kind = leg.mode === 'BUS' ? 'Bus' : leg.mode[0] + leg.mode.slice(1).toLowerCase();
+    let bus = `${kind} ${variant} ${hhmm(toSecs(leg.startTime))}`;
+    if (leg.realTime && (bus + ' live').length <= MAX_LINE) bus += ' live';
+    out.push({ k: 'bus', t: clip(bus), n: busNo });
+    if (to) out.push({ k: 'to', t: destLine(to), n: busNo, of: nBus });
+    out.push({ k: 'off', t: clip(`Off ${stopTag(leg.to)} ${hhmm(toSecs(leg.endTime))}`), n: busNo });
+    lastOff = leg.to?.stopId || null;
+    busNo++;
+    walked = false;
+    walkSecs = 0;
+  }
+  if (walked) out.push({ k: busNo ? 'walkEnd' : 'walk', t: clip(`Walk ${mins(walkSecs)}m`) });
+  out.push({ k: 'arrive', t: `Arrive ${hhmm(toSecs(it.endTime))}` });
+  return out;
+}
+
+export function xferText(n) {
+  if (!n) return 'No transfer';
+  return n === 1 ? '1 transfer' : `${n} transfers`;
+}
+
+export function itineraryLines(it) {
+  return itineraryItems(it).map((x) => x.t);
+}
+
+// Drop order when a reply is over budget: the no-transfer alternative, headsign lines (middle legs first,
+// the first leg's last), then the Leave line (the watch shows the leave time
+// in its header anyway). The transfer count, Board, Bus, Off, the last walk
+// and Arrive are never dropped.
+function dropRank(x) {
+  if (x.k === 'alt') return -1;
+  if (x.k === 'to') return x.n === 0 ? 2 : x.n === x.of - 1 ? 1 : 0;
+  if (x.k === 'leave') return 3;
+  return Infinity;
+}
+
+// Remove droppable lines (middle first) until fits(lines) is true.
+export function compactItems(items, fits) {
+  let list = [...items];
+  while (!fits(list.map((x) => x.t))) {
+    let best = -1;
+    for (let i = 0; i < list.length; i++) {
+      const r = dropRank(list[i]);
+      if (r === Infinity) continue;
+      // Lowest rank first; among equals, the one nearest the middle of the trip.
+      if (best < 0 || r < dropRank(list[best]) ||
+        (r === dropRank(list[best]) && Math.abs(i - list.length / 2) < Math.abs(best - list.length / 2))) best = i;
+    }
+    if (best < 0) break;
+    // The alternative's two lines go together.
+    const drop = list[best];
+    list = list.filter((x, i) => i !== best && !(drop.k === 'alt' && x.k === 'alt'));
+  }
+  return list.map((x) => x.t);
+}
+
+// ---- walking ---------------------------------------------------------------
+
+export const HERE_M = 150;
+
+// Great-circle distance in metres.
+export function metres(a, b) {
+  const R = 6371000;
+  const rad = Math.PI / 180;
+  const dLat = (b.lat - a.lat) * rad;
+  const dLon = (b.lon - a.lon) * rad;
+  const h = Math.sin(dLat / 2) ** 2 + Math.cos(a.lat * rad) * Math.cos(b.lat * rad) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.min(1, Math.sqrt(h)));
+}
+
+export function hereReply(now) {
+  return { v: 1, ok: true, leave: now, arr: now, rt: false, xfers: 0, lines: ["You're here"], alert: null, next: null };
+}
+
+// Shortest walk-only connection in Transitous' `direct` list, as seconds.
+export function bestWalk(tq) {
+  const list = Array.isArray(tq?.direct) ? tq.direct : [];
+  let best = null;
+  for (const d of list) {
+    const legs = d?.legs || [];
+    if (!legs.length || !legs.every((l) => l.mode === 'WALK')) continue;
+    let dur = Number(d.duration);
+    if (!Number.isFinite(dur) && d.startTime && d.endTime) dur = toSecs(d.endTime) - toSecs(d.startTime);
+    if (!Number.isFinite(dur) || dur < 0) continue;
+    if (best === null || dur < best.dur) best = { dur, start: d.startTime ? toSecs(d.startTime) : null, end: d.endTime ? toSecs(d.endTime) : null };
+  }
+  return best;
+}
+
+// Fewer transfers win when they cost at most this much (later arrival, or
+// for arrive-by an earlier leave).
+export const XFER_SLACK = 600;
+
 // Pick the itinerary to show.
-// depart: earliest arrival, then fewer transfers, then latest leave.
-// arrive: latest leave that still arrives by t, then fewer transfers.
+// depart: among trips arriving within 10 min of the earliest arrival, fewest
+//   transfers, then earliest arrival, then latest leave.
+// arrive: among trips that arrive by t (or all, if none do) and leave within
+//   10 min of the latest leave, fewest transfers, then latest leave.
 export function chooseItinerary(its, mode, t) {
   const list = its.filter((it) => !cancelled(it) && it.startTime && it.endTime);
   if (!list.length) return { chosen: null, other: null };
   const leave = (it) => toSecs(it.startTime);
   const arr = (it) => toSecs(it.endTime);
+  const xf = (it) => it.transfers ?? Math.max(0, (it.legs || []).filter(isTransit).length - 1);
   let chosen;
   if (mode === 'arrive') {
     const ok = list.filter((it) => arr(it) <= t);
     const pool = ok.length ? ok : list;
-    chosen = [...pool].sort((a, b) => leave(b) - leave(a) || (a.transfers ?? 0) - (b.transfers ?? 0))[0];
+    const latest = Math.max(...pool.map(leave));
+    chosen = pool
+      .filter((it) => leave(it) >= latest - XFER_SLACK)
+      .sort((a, b) => xf(a) - xf(b) || leave(b) - leave(a) || arr(b) - arr(a))[0];
     const earlier = list.filter((it) => leave(it) < leave(chosen)).sort((a, b) => leave(b) - leave(a))[0];
     return { chosen, other: earlier ? `Earlier: ${hhmm(leave(earlier))}` : null };
   }
-  chosen = [...list].sort(
-    (a, b) => arr(a) - arr(b) || (a.transfers ?? 0) - (b.transfers ?? 0) || leave(b) - leave(a),
-  )[0];
+  const fastest = Math.min(...list.map(arr));
+  chosen = list
+    .filter((it) => arr(it) <= fastest + XFER_SLACK)
+    .sort((a, b) => xf(a) - xf(b) || arr(a) - arr(b) || leave(b) - leave(a))[0];
   const next = list.filter((it) => leave(it) > leave(chosen)).sort((a, b) => leave(a) - leave(b))[0];
   return { chosen, other: next ? `Next: ${hhmm(leave(next))}` : null };
 }
@@ -147,24 +258,87 @@ export function legStops(it) {
   return out;
 }
 
+export const MAX_REPLY = 600; // bytes; the watch handles this comfortably
+
 // Build the reply object. `alerts` is the compact map from compactAlerts().
-export function trimPlan(tq, { mode = 'depart', t, alerts = null } = {}) {
+// `t` is the query time (depart: leave at, arrive: arrive by).
+export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY } = {}) {
   const its = Array.isArray(tq?.itineraries) ? tq.itineraries : [];
   const { chosen, other } = chooseItinerary(its, mode, t);
-  if (!chosen) return errorReply('No trips found');
+  const walk = bestWalk(tq);
+  if (!chosen && !walk) return errorReply('No trips found');
+
+  let w = null;
+  if (walk) {
+    const tt = Number.isFinite(t) ? t : null;
+    if (mode === 'arrive') {
+      const arr = tt ?? walk.end ?? walk.start + walk.dur;
+      w = { leave: arr - walk.dur, arr, dur: walk.dur };
+    } else {
+      const leave = tt ?? walk.start ?? walk.end - walk.dur;
+      w = { leave, arr: leave + walk.dur, dur: walk.dur };
+    }
+  }
+  const busLeave = chosen ? toSecs(chosen.startTime) : 0;
+  const busArr = chosen ? toSecs(chosen.endTime) : 0;
+  // depart: walk if it gets there no later than the bus.
+  // arrive: walk if you can leave no earlier than for the bus.
+  const preferWalk = w && (!chosen || (mode === 'arrive' ? w.leave >= busLeave : w.arr <= busArr));
+
+  if (preferWalk) {
+    let next = null;
+    if (chosen) next = mode === 'arrive' ? `Bus: leave ${hhmm(busLeave)}` : `Bus: arr ${hhmm(busArr)}`;
+    return {
+      v: 1,
+      ok: true,
+      leave: w.leave,
+      arr: w.arr,
+      rt: false,
+      xfers: 0,
+      lines: [`Walk ${mins(w.dur)} min`, `Arrive ${hhmm(w.arr)}`],
+      alert: null,
+      next,
+    };
+  }
+
   const legs = chosen.legs || [];
+  let next = other;
+  if (!next && w) next = mode === 'arrive' ? `Walk: leave ${hhmm(w.leave)}` : `Walk: arr ${hhmm(w.arr)}`;
   const reply = {
     v: 1,
     ok: true,
-    leave: toSecs(chosen.startTime),
-    arr: toSecs(chosen.endTime),
+    leave: busLeave,
+    arr: busArr,
     rt: legs.some((l) => isTransit(l) && l.realTime === true),
     xfers: chosen.transfers ?? Math.max(0, legs.filter(isTransit).length - 1),
-    lines: itineraryLines(chosen).slice(0, 12),
+    lines: [],
     alert: alerts ? alertFor(legStops(chosen), alerts) : null,
-    next: other,
+    next,
   };
+  const items = itineraryItems(chosen);
+  if (reply.xfers > 0) items.push(...altItems(its, chosen));
+  reply.lines = compactItems(items, (lines) => byteLen({ ...reply, lines }) <= maxBytes);
   return reply;
+}
+
+// When the chosen trip has transfers but a one-bus trip exists (it was not
+// chosen because it arrives over 10 min later), two short optional lines:
+// "Direct 9 05:58", "arr 06:11".
+function altItems(its, chosen) {
+  const one = its
+    .filter((it) => it !== chosen && !cancelled(it) && it.startTime && it.endTime && (it.legs || []).filter(isTransit).length === 1)
+    .sort((a, b) => toSecs(a.endTime) - toSecs(b.endTime))[0];
+  if (!one) return [];
+  const leg = one.legs.find(isTransit);
+  const { variant } = splitHeadsign(leg.headsign, routeLabel(leg));
+  return [
+    { k: 'alt', t: clip(`Direct ${variant} ${hhmm(toSecs(leg.startTime))}`) },
+    { k: 'alt', t: `arr ${hhmm(toSecs(one.endTime))}` },
+  ];
+}
+
+function byteLen(obj) {
+  return new TextEncoder().encode(JSON.stringify(obj)).length;
 }
 
 export function errorReply(err) {
