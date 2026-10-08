@@ -66,14 +66,23 @@ Reply (times are America/Toronto, lines are at most 18 characters):
   limit; if a reply would pass 600 bytes, the single-bus alternative, then
   headsign lines (middle legs first), then `Leave` are dropped, never the
   transfer count, Board, Bus, Off, the last walk or Arrive.
+- If a stop you board at or get off at is closed for that route (LTC alerts
+  feed), a line right under its `Walk .. to #X` / `Board at #X` / `Off #X`
+  line says where to go: `Temp stop 130m W`, `Temp 2 poles S`,
+  `Use Althouse` (alternative stop named), or `Closed: see alert`. Never
+  dropped.
 - Within 150 m of the destination the reply is `"lines":["You're here"]`
   (no Transitous call).
 - Walking: Transitous returns walk-only routes in `direct` (the Worker asks
-  for `directModes=WALK`). When the walk gets there no later than the best bus
+  for `directModes=WALK` and `maxDirectTime=3600`, i.e. walks up to an hour;
+  MOTIS' default is 30 min). When the walk gets there no later than the best bus
   (arrive-by: lets you leave no earlier), the reply is
   `"lines":["Walk 12 min","Arrive 08:12"]`, `xfers` 0, with the bus as
   `"next":"Bus: arr 08:26"` (arrive-by: `Bus: leave 07:58`). When the bus wins
   and there is no later bus, `next` is `Walk: arr 08:40`.
+- If Transitous returns nothing at all and the destination is at most 3 km
+  away in a straight line, the reply is an estimate marked with `~`:
+  `["Walk ~17 min","Arrive ~08:16"]` (distance x 1.3 for streets, at 1.3 m/s).
 
 Errors are `{"v":1,"ok":false,"err":"..."}` with HTTP 200 so the watch can show
 the text: `Bad token`, `Token not set`, `Bad params`, `Home not set`,

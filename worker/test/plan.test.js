@@ -31,7 +31,9 @@ function checkShape(r) {
 function checkBoarding(lines) {
   lines.forEach((l, i) => {
     if (!/^Bus /.test(l)) return;
-    const prev = lines[i - 1] || '';
+    let j = i - 1;
+    while (j >= 0 && /^(Temp |Use |Closed: )/.test(lines[j])) j--; // closure note under its stop
+    const prev = lines[j] || '';
     assert.ok(/^(Walk \d+m to |Board at |Off )/.test(prev), `no boarding stop before "${l}" in ${JSON.stringify(lines)}`);
   });
   assert.equal(lines.filter((l) => /^Bus /.test(l)).length, lines.filter((l) => /^Off /.test(l)).length);
@@ -57,7 +59,7 @@ test('trim: to school with a transfer and a closure alert at the stop you get of
   assert.equal(r.rt, false);
   assert.deepEqual(r.lines, [
     'Leave 08:01', '1 transfer', 'Walk 1m to #1143', 'Bus 13A 08:02', 'to White Oaks Mall', 'Off #509 08:11',
-    'Walk 2m to #1173', 'Bus 27 08:15', 'to Capulet Lane', 'Off #1647 08:23', 'Walk 3m', 'Arrive 08:26',
+    'Walk 2m to #1173', 'Bus 27 08:15', 'to Capulet Lane', 'Off #1647 08:23', 'Temp stop 130m W', 'Walk 3m', 'Arrive 08:26',
   ]);
   assert.equal(r.alert, '#1647 closed: temp stop 130m W');
   assert.equal(r.next, null);
@@ -400,4 +402,71 @@ test('choice: fewer transfers win within 10 minutes of the fastest arrival', () 
 test('walk-only and "You\'re here" replies have no transfer line', () => {
   assert.ok(!trimPlan({ itineraries: [], direct: [walkDirect(300)] }, { t: T0 }).lines.some((l) => /transfer/.test(l)));
   assert.ok(!hereReply(T0).lines.some((l) => /transfer/.test(l)));
+});
+
+// ---- closed stops: a note under the boarding / Off line -----------------
+
+const CLOSURES = compactAlerts(fx('alerts_closures_handmade'), NOW);
+
+test('closed boarding and Off stops get a must-keep temp-stop line', () => {
+  // Masonville -> school: board #1143 (closed, no detail), transfer to #1173
+  // (closed, alternative named), get off at #1647 (temp stop 130 m west).
+  let r = trimPlan(only('masonville_to_school_0800', 0), { t: at('2026-10-08T08:00:00-04:00'), alerts: CLOSURES });
+  checkShape(r);
+  checkBoarding(r.lines);
+  assert.deepEqual(r.lines, [
+    'Leave 08:01', '1 transfer', 'Walk 1m to #1143', 'Closed: see alert', 'Bus 13A 08:02', 'to White Oaks Mall', 'Off #509 08:11',
+    'Walk 2m to #1173', 'Use Althouse', 'Bus 27 08:15', 'to Capulet Lane', 'Off #1647 08:23', 'Temp stop 130m W', 'Walk 3m', 'Arrive 08:26',
+  ]);
+  // School -> Masonville: board #1646 on route 27 (the route 9-only closure
+  // there is ignored), detour at #1818 adds nothing, get off at closed #1143.
+  r = trimPlan(only('school_to_masonville_1600', 0), { t: at('2026-10-08T16:00:00-04:00'), alerts: CLOSURES });
+  checkShape(r);
+  checkBoarding(r.lines);
+  assert.deepEqual(r.lines.slice(0, 4), ['Leave 16:04', '1 transfer', 'Walk 1m to #1646', 'Temp 2 poles E']);
+  assert.equal(r.lines.filter((l) => l === 'Temp 2 poles E').length, 1);
+  assert.ok(!r.lines.some((l) => /pole S/.test(l)), 'detours add no line');
+  assert.deepEqual(r.lines.slice(-3), ['Closed: see alert', 'Walk 1m', 'Arrive 16:25']);
+  // Never dropped when space runs out (headsigns and Leave go first).
+  const tight = trimPlan(only('masonville_to_school_0800', 0), { t: at('2026-10-08T08:00:00-04:00'), alerts: CLOSURES, maxBytes: 100 });
+  for (const l of ['Closed: see alert', 'Use Althouse', 'Temp stop 130m W']) assert.ok(tight.lines.includes(l), l);
+  // No alerts map, no lines.
+  assert.ok(!trimPlan(only('masonville_to_school_0800', 0), { t: NOW, alerts: null }).lines.some((l) => /^(Temp|Use|Closed)/.test(l)));
+});
+
+test('closure text fits 18 characters', async () => {
+  const { closedText } = await import('../src/plan.js');
+  assert.equal(closedText('temp stop 130m W'), 'Temp stop 130m W');
+  assert.equal(closedText('temp stop 1 pole W'), 'Temp stop 1 pole W');
+  assert.equal(closedText('temp stop 2 poles S'), 'Temp 2 poles S');
+  assert.equal(closedText('temp stop 1250m N'), 'Temp stop 1250m N');
+  assert.equal(closedText('use Althouse College'), 'Use Althouse');
+  assert.equal(closedText('use Oxford at Mornington EB'), 'Use Oxford/Morning');
+  assert.equal(closedText('use Clarke at Royal North NB'), 'Use Clarke/Royal');
+  assert.equal(closedText('use Commissioners at Meadowlilly EB'), 'Use Commissioners');
+  assert.equal(closedText('use Fanshawe College Stop 3'), 'Use Fanshawe');
+  assert.equal(closedText(''), 'Closed: see alert');
+  for (const d of ['temp stop 999m W', 'temp stop 12 poles N', 'use Wellington at Baseline Rd FS NB', 'use Commissioners at Meadowlilly EB']) {
+    assert.ok(closedText(d).length <= MAX_LINE, closedText(d));
+  }
+});
+
+test('estimated walk when Transitous has nothing within 3 km (an estimate, marked ~)', async () => {
+  const { estimatedWalk, EST_MAX_M } = await import('../src/plan.js');
+  // 1 km straight line -> 1300 m of streets at 1.3 m/s = 1000 s, about 17 min.
+  const r = trimPlan({ itineraries: [], direct: [] }, { t: T0, distM: 1000 });
+  checkShape(r);
+  assert.deepEqual(r.lines, ['Walk ~17 min', 'Arrive ~08:16']);
+  assert.equal(r.arr - r.leave, 1000);
+  assert.equal(r.leave, T0);
+  // Arrive-by: leave early enough.
+  const a = trimPlan({ itineraries: [], direct: [] }, { mode: 'arrive', t: T0, distM: 1000 });
+  assert.equal(a.arr, T0);
+  assert.equal(a.leave, T0 - 1000);
+  // Limits: 3 km yes, beyond no; Transitous answers win over the estimate.
+  assert.equal(EST_MAX_M, 3000);
+  assert.equal(trimPlan({ itineraries: [], direct: [] }, { t: T0, distM: 3000 }).ok, true);
+  assert.equal(trimPlan({ itineraries: [], direct: [] }, { t: T0, distM: 3001 }).err, 'No trips found');
+  assert.deepEqual(trimPlan({ itineraries: [], direct: [walkDirect(600)] }, { t: T0, distM: 1000 }).lines, ['Walk 10 min', 'Arrive 08:10']);
+  assert.equal(estimatedWalk(50, 'depart', T0).lines[0], 'Walk ~1 min');
 });

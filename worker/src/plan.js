@@ -92,12 +92,14 @@ function legSecs(leg) {
 //   leave, xfer ("No transfer", "1 transfer", "2 transfers"; trips with a
 //   bus only), board ("Walk 6m to #1234" or "Board at #1234"), bus, to
 //   (headsign), off, walkEnd (walk after the last bus), walk (walk-only
-//   trip), arrive.
+//   trip), arrive, closed (right after a board or Off line whose stop is
+//   closed for that route: "Temp stop 130m W", "Use Althouse", or
+//   "Closed: see alert").
 // Every bus gets a board line naming its stop, built from the bus leg itself
 // (so a missing, split or stop-less walk leg can't hide it). The only
 // exception is a transfer at the very stop the previous bus left you at: the
 // "Off #1234" line just above already names it.
-export function itineraryItems(it) {
+export function itineraryItems(it, alerts = null) {
   const out = [];
   const legs = it.legs || [];
   const nBus = legs.filter(isTransit).length;
@@ -114,19 +116,25 @@ export function itineraryItems(it) {
       continue;
     }
     const from = leg.from || {};
+    const route = legRoute(leg);
     const sameStop = busNo > 0 && lastOff && from.stopId && lastOff === from.stopId;
     if (!sameStop) {
       const board = walked && walkSecs > 0 ? `Walk ${mins(walkSecs)}m to ${stopTag(from)}` : `Board at ${stopTag(from)}`;
       out.push({ k: 'board', t: clip(board), n: busNo });
     }
-    const route = routeLabel(leg);
-    const { variant, to } = splitHeadsign(leg.headsign, route);
+    // Boarding stop closed for this route: say where the temporary stop is
+    // (for a same-stop transfer, unless the Off line above already did).
+    const shut = closureLine(from, route, alerts);
+    if (shut && !(sameStop && out.at(-1)?.k === 'closed')) out.push({ k: 'closed', t: shut, n: busNo });
+    const { variant, to } = splitHeadsign(leg.headsign, routeLabel(leg));
     const kind = leg.mode === 'BUS' ? 'Bus' : leg.mode[0] + leg.mode.slice(1).toLowerCase();
     let bus = `${kind} ${variant} ${hhmm(toSecs(leg.startTime))}`;
     if (leg.realTime && (bus + ' live').length <= MAX_LINE) bus += ' live';
     out.push({ k: 'bus', t: clip(bus), n: busNo });
     if (to) out.push({ k: 'to', t: destLine(to), n: busNo, of: nBus });
     out.push({ k: 'off', t: clip(`Off ${stopTag(leg.to)} ${hhmm(toSecs(leg.endTime))}`), n: busNo });
+    const shutOff = closureLine(leg.to, route, alerts);
+    if (shutOff) out.push({ k: 'closed', t: shutOff, n: busNo });
     lastOff = leg.to?.stopId || null;
     busNo++;
     walked = false;
@@ -135,6 +143,39 @@ export function itineraryItems(it) {
   if (walked) out.push({ k: busNo ? 'walkEnd' : 'walk', t: clip(`Walk ${mins(walkSecs)}m`) });
   out.push({ k: 'arrive', t: `Arrive ${hhmm(toSecs(it.endTime))}` });
   return out;
+}
+
+function legRoute(leg) {
+  return String(leg.routeId || '').replace(STOP_PREFIX, '') || String(leg.routeShortName || '');
+}
+
+// Closure alert for a stop as one short line, or null. Detours don't count.
+export function closureLine(place, route, alerts) {
+  if (!alerts || !place?.stopId) return null;
+  const hits = alerts[String(place.stopId).replace(STOP_PREFIX, '')];
+  const hit = hits && hits.find((h) => h.k === 'closed' && (!h.r || !route || h.r === route));
+  if (!hit) return null;
+  return closedText(hit.d);
+}
+
+// alertDetail() text -> line: "temp stop 130m W" -> "Temp stop 130m W",
+// "temp stop 2 poles S" -> "Temp 2 poles S", "use Althouse College" ->
+// "Use Althouse", "use Oxford at Mornington EB" -> "Use Oxford/Morningt",
+// nothing -> "Closed: see alert".
+export function closedText(detail) {
+  const d = String(detail || '').trim();
+  let m = d.match(/^temp stop (.+)$/i);
+  if (m) {
+    const long = `Temp stop ${m[1]}`;
+    return long.length <= MAX_LINE ? long : clip(`Temp ${m[1]}`);
+  }
+  m = d.match(/^use (.+)$/i);
+  if (m) {
+    // "Oxford at Mornington EB" -> "Oxford/Mornington".
+    const p = m[1].replace(/\s*\(temp stop\)/i, '').replace(/\s+[NSEW]B$/, '').replace(/\s+at\s+/i, '/').trim();
+    return clipWords(`Use ${p}`, MAX_LINE).replace(/\s+(&|and|-|at|of)$/i, '').replace(/\/$/, '');
+  }
+  return 'Closed: see alert';
 }
 
 export function xferText(n) {
@@ -260,13 +301,41 @@ export function legStops(it) {
 
 export const MAX_REPLY = 600; // bytes; the watch handles this comfortably
 
+// Fallback walk estimate: streets are ~1.3x the straight line, walking ~1.3 m/s.
+export const EST_MAX_M = 3000;
+export const EST_DETOUR = 1.3;
+export const EST_SPEED = 1.3;
+
+export function estimatedWalk(distM, mode, t) {
+  const secs = Math.round((distM * EST_DETOUR) / EST_SPEED);
+  const leave = mode === 'arrive' ? t - secs : t;
+  const arr = leave + secs;
+  return {
+    v: 1,
+    ok: true,
+    leave,
+    arr,
+    rt: false,
+    xfers: 0,
+    lines: [`Walk ~${mins(secs)} min`, `Arrive ~${hhmm(arr)}`],
+    alert: null,
+    next: null,
+  };
+}
+
 // Build the reply object. `alerts` is the compact map from compactAlerts().
 // `t` is the query time (depart: leave at, arrive: arrive by).
-export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY } = {}) {
+// `distM` (optional) is the straight-line distance to the destination; when
+// Transitous has nothing at all and it is at most EST_MAX_M, the reply is an
+// estimated walk instead of "No trips found".
+export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY, distM = null } = {}) {
   const its = Array.isArray(tq?.itineraries) ? tq.itineraries : [];
   const { chosen, other } = chooseItinerary(its, mode, t);
   const walk = bestWalk(tq);
-  if (!chosen && !walk) return errorReply('No trips found');
+  if (!chosen && !walk) {
+    if (Number.isFinite(distM) && distM <= EST_MAX_M && Number.isFinite(t)) return estimatedWalk(distM, mode, t);
+    return errorReply('No trips found');
+  }
 
   let w = null;
   if (walk) {
@@ -315,7 +384,7 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
     alert: alerts ? alertFor(legStops(chosen), alerts) : null,
     next,
   };
-  const items = itineraryItems(chosen);
+  const items = itineraryItems(chosen, alerts);
   if (reply.xfers > 0) items.push(...altItems(its, chosen));
   reply.lines = compactItems(items, (lines) => byteLen({ ...reply, lines }) <= maxBytes);
   return reply;

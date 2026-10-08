@@ -56,6 +56,7 @@ test('plan to school: Transitous query and trimmed reply', async () => {
   assert.equal(u.searchParams.get('numItineraries'), '3');
   assert.equal(u.searchParams.get('time'), '2026-10-08T12:00:00.000Z');
   assert.equal(u.searchParams.get('directModes'), 'WALK');
+  assert.equal(u.searchParams.get('maxDirectTime'), '3600');
   assert.equal(tq.init.headers['User-Agent'], USER_AGENT);
   assert.equal(USER_AGENT, 'LTCTrip/0.1 (+https://github.com/irugniM)');
 });
@@ -105,9 +106,27 @@ test('errors: Transitous down (HTTP 5xx and network)', async () => {
   assert.equal((await call(`${BASE}&dest=school`, { fetchImpl: fakeFetch({ planFail: true }) })).body.err, 'Transitous down');
 });
 
-test('errors: no trips found', async () => {
+test('errors: no trips found (more than 3 km away)', async () => {
   const f = async (url) => new Response(String(url) === ALERTS_URL ? '{"entity":[]}' : '{"itineraries":[],"direct":[]}');
-  assert.deepEqual((await call(`${BASE}&dest=school`, { fetchImpl: f })).body, { v: 1, ok: false, err: 'No trips found' });
+  // White Oaks Mall, ~9 km from the school stop.
+  const far = 'https://w.example/v1/plan?lat=42.93242&lon=-81.22351&k=test-token&dest=school';
+  assert.deepEqual((await call(far, { fetchImpl: f })).body, { v: 1, ok: false, err: 'No trips found' });
+});
+
+test('Transitous empty within 3 km: estimated walk (marked with ~)', async () => {
+  const f = async (url) => new Response(String(url) === ALERTS_URL ? '{"entity":[]}' : '{"itineraries":[],"direct":[]}');
+  // Masonville (BASE) is ~2.7 km from the school stop. Estimate =
+  // distance x 1.3 (streets) / 1.3 m/s, so about 1 s per straight-line metre.
+  const r = await call(`${BASE}&dest=school`, { fetchImpl: f });
+  assert.equal(r.body.ok, true);
+  assert.equal(r.body.lines.length, 2);
+  assert.match(r.body.lines[0], /^Walk ~\d+ min$/);
+  assert.match(r.body.lines[1], /^Arrive ~\d\d:\d\d$/);
+  const secs = r.body.arr - r.body.leave;
+  assert.ok(secs > 2600 && secs < 2800, String(secs));
+  assert.equal(r.body.lines[0], `Walk ~${Math.round(secs / 60)} min`);
+  assert.equal(r.body.leave, NOW);
+  assert.equal(r.body.xfers, 0);
 });
 
 test('alerts feed unreachable: plan still works, alert null, retry after 30 s', async () => {

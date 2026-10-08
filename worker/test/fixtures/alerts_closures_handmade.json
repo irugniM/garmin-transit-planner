@@ -1,0 +1,289 @@
+{
+ "header": {
+  "gtfs_realtime_version": "2.0",
+  "incrementality": 0,
+  "timestamp": 1791438559
+ },
+ "entity": [
+  {
+   "id": "1",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "27",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "SARNWES2",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 9,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "The following stops will be closed until further notice:\r\nSarnia at Western WB \r\n\r\nAlternative stop(s) for Route 27 can be found at:\r\nSarnia west of Western WB (Temp Stop approx. 130m west of Stop)\r\n\r\n",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "2",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "27",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "SARNWES1",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 9,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "The following stops will be closed until further notice:\r\nSarnia at Western EB\r\n\r\nAlternative stop(s) for Route 27 can be found at:\r\nSarnia east of Western EB (Temp Stop - 2 poles east of stop)\r\n",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "3",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "09",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "SARNWES1",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 9,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Sarnia at Western EB will be closed until further notice. Alternative stop(s) for Route 9 can be found at Althouse College\r\n",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "4",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "27",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "MIDDPERT",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 9,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Middlesex at Perth will be closed until further notice. Alternative stop(s) for Route 27 can be found at Althouse College\r\n",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "5",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "MASOSTO4",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 9,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Masonville Place Stop 4 is closed until further notice.\r\n",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "6",
+   "is_deleted": false,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "27",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "UNIVRIC1",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 4,
+    "header_text": {
+     "translation": [
+      {
+       "text": "DETOUR",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Route 27 is on detour. Alternate stops can be found at:\r\nRichmond at University (Temp Stop) - 2nd pole South of stop\r\n",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "7",
+   "is_deleted": true,
+   "alert": {
+    "active_period": [
+     {
+      "start": 1791190800,
+      "end": 32503698000
+     }
+    ],
+    "informed_entity": [
+     {
+      "agency_id": "",
+      "route_id": "90",
+      "route_type": 0,
+      "trip": null,
+      "stop_id": "RICHUNI1",
+      "direction_id": 0
+     }
+    ],
+    "cause": 10,
+    "effect": 9,
+    "header_text": {
+     "translation": [
+      {
+       "text": "STOP CLOSURE",
+       "language": "en"
+      }
+     ]
+    },
+    "description_text": {
+     "translation": [
+      {
+       "text": "Richmond at University closed.",
+       "language": "en"
+      }
+     ]
+    }
+   }
+  }
+ ]
+}
