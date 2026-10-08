@@ -337,9 +337,7 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
   }
   const busLeave = chosen ? toSecs(chosen.startTime) : 0;
   const busArr = chosen ? toSecs(chosen.endTime) : 0;
-  // depart: walk if it gets there no later than the bus.
-  // arrive: walk if you can leave no earlier than for the bus.
-  const preferWalk = w && (!chosen || (mode === 'arrive' ? w.leave >= busLeave : w.arr <= busArr));
+  const preferWalk = w && (!chosen || walkWins(w, { mode, t, busLeave, busArr }));
 
   if (preferWalk) {
     let next = null;
@@ -358,8 +356,10 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
   }
 
   const legs = chosen.legs || [];
+  // A long walk that lost to the bus is still worth a mention; it takes the
+  // place of "Next:". A short slower walk only fills an empty `next`.
   let next = other;
-  if (!next && w) next = mode === 'arrive' ? `Walk: leave ${hhmm(w.leave)}` : `Walk: arr ${hhmm(w.arr)}`;
+  if (w && (w.dur > LONG_WALK || !next)) next = walkNote(w, mode);
   const reply = {
     v: 1,
     ok: true,
@@ -372,25 +372,56 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
     next,
   };
   const items = itineraryItems(chosen, alerts);
-  if (reply.xfers > 0) items.push(...altItems(its, chosen));
+  if (reply.xfers > 0) items.push(...altItems(its, chosen, mode, t));
   reply.lines = compactItems(items, (lines) => byteLen({ ...reply, lines }) <= maxBytes);
   return reply;
 }
 
-// When the chosen trip has transfers but a one-bus trip exists (it was not
-// chosen because it arrives over 10 min later), two short optional lines:
-// "Direct 9 05:58", "arr 06:11".
-function altItems(its, chosen) {
+// When the chosen trip has transfers but a one-bus trip exists (not chosen
+// because it arrives over 10 min later, or walks over 10 min more), two
+// short optional lines: "Direct 9 05:58", "arr 06:11" ("arr 16:44 walk 22m"
+// when the walking is what ruled it out).
+function altItems(its, chosen, mode, t) {
   const one = its
     .filter((it) => it !== chosen && !cancelled(it) && it.startTime && it.endTime && (it.legs || []).filter(isTransit).length === 1)
-    .sort((a, b) => toSecs(a.endTime) - toSecs(b.endTime))[0];
+    .filter((it) => mode !== 'arrive' || !Number.isFinite(t) || toSecs(it.endTime) <= t)
+    .sort((a, b) => toSecs(a.endTime) - toSecs(b.endTime) || walkSecs(a) - walkSecs(b))[0];
   if (!one) return [];
   const leg = one.legs.find(isTransit);
   const { variant } = splitHeadsign(leg.headsign, routeLabel(leg));
+  let arr = `arr ${hhmm(toSecs(one.endTime))}`;
+  const w = walkSecs(one);
+  const longer = `${arr} walk ${mins(w)}m`;
+  if (w - walkSecs(chosen) > WALK_SLACK && longer.length <= MAX_LINE) arr = longer;
   return [
     { k: 'alt', t: clip(`Direct ${variant} ${hhmm(toSecs(leg.startTime))}`) },
-    { k: 'alt', t: `arr ${hhmm(toSecs(one.endTime))}` },
+    { k: 'alt', t: arr },
   ];
+}
+
+// Walk-only vs the chosen bus trip.
+// Walks up to 20 min: the walk wins if it gets there no later (arrive-by:
+// lets you leave no earlier).
+// Longer walks win only if they get there at least 15 min earlier (arrive-by:
+// leave 15 min later), or no bus gets there within 90 min of t (arrive-by:
+// the bus would be late, or gets there over 90 min early), e.g. at night.
+export const LONG_WALK = 1200;
+export const LONG_WALK_GAIN = 900;
+export const BUS_HORIZON = 5400;
+
+export function walkWins(w, { mode, t, busLeave, busArr }) {
+  const tt = Number.isFinite(t) ? t : mode === 'arrive' ? w.arr : w.leave;
+  if (mode === 'arrive') {
+    if (w.dur <= LONG_WALK) return w.leave >= busLeave;
+    return w.leave >= busLeave + LONG_WALK_GAIN || busArr > tt || busArr < tt - BUS_HORIZON;
+  }
+  if (w.dur <= LONG_WALK) return w.arr <= busArr;
+  return w.arr <= busArr - LONG_WALK_GAIN || busArr > tt + BUS_HORIZON;
+}
+
+// "Walk 25m arr 16:40" / arrive-by "Walk 25m lv 07:40" (at most 18 chars).
+export function walkNote(w, mode) {
+  return mode === 'arrive' ? `Walk ${mins(w.dur)}m lv ${hhmm(w.leave)}` : `Walk ${mins(w.dur)}m arr ${hhmm(w.arr)}`;
 }
 
 function byteLen(obj) {

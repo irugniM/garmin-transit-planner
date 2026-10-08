@@ -59,8 +59,9 @@ Reply (times are America/Toronto, lines are at most 18 characters):
 - Line 2 (after `Leave`) is the transfer count: `No transfer`, `1 transfer`,
   `2 transfers` (not on walk-only or `You're here` replies).
 - If the trip has transfers and Transitous also found a single-bus trip (that
-  arrives over 10 min later), two optional lines follow `Arrive`:
-  `Direct 9 05:58`, `arr 06:16`.
+  arrives over 10 min later or walks over 10 min more), two optional lines
+  follow `Arrive`: `Direct 9 05:58`, `arr 06:16` (`arr 16:44 walk 22m` when
+  walking ruled it out).
 - Every bus has a line naming where to board just before it (`Walk 1m to #1143`,
   or `Board at #1143` when there is no walk), except a transfer at the same stop
   the previous bus left you at (its `Off #1234` line names it). Every bus has its
@@ -78,12 +79,16 @@ Reply (times are America/Toronto, lines are at most 18 characters):
 - Walking: Transitous returns walk-only routes in `direct` (the Worker asks
   for `directModes=WALK` and `maxDirectTime=5400`, i.e. walks up to 90 min;
   MOTIS' default is 30 min). It also allows up to 30 min of walking to the
-  first stop (`maxPreTransitTime=1800`; default 15 min). When the walk gets
-  there no later than the best bus (arrive-by: lets you leave no earlier),
+  first stop (`maxPreTransitTime=1800`; default 15 min). A walk of up to
+  20 min wins when it gets there no later than the chosen bus (arrive-by:
+  lets you leave no earlier). A longer walk wins only if it gets there at
+  least 15 min earlier (arrive-by: leave 15 min later) or no bus gets there
+  within 90 min (e.g. at night). When the walk wins,
   the reply is
   `"lines":["Walk 12 min","Arrive 08:12"]`, `xfers` 0, with the bus as
-  `"next":"Bus: arr 08:26"` (arrive-by: `Bus: leave 07:58`). When the bus wins
-  and there is no later bus, `next` is `Walk: arr 08:40`.
+  `"next":"Bus: arr 08:26"` (arrive-by: `Bus: leave 07:58`). When the bus wins,
+  a walk over 20 min replaces `Next:` as `"next":"Walk 27m arr 08:27"`
+  (arrive-by: `Walk 27m lv 07:33`); a shorter one only fills an empty `next`.
 
 Errors are `{"v":1,"ok":false,"err":"..."}` with HTTP 200 so the watch can show
 the text: `Bad token`, `Token not set`, `Bad params`, `Home not set`,
