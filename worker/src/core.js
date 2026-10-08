@@ -130,7 +130,9 @@ export async function planTrip(params, env, deps) {
   u.searchParams.set('toPlace', `${to.lat},${to.lon}`);
   u.searchParams.set('time', new Date(Math.floor(t) * 1000).toISOString());
   u.searchParams.set('arriveBy', mode === 'arrive' ? 'true' : 'false');
-  u.searchParams.set('numItineraries', '3');
+  // 5, not 3: the chosen trip is often the last of three, which left no
+  // "Next:" bus to show.
+  u.searchParams.set('numItineraries', '5');
   // Walk-only connections come back separately in `direct`. WALK is MOTIS'
   // default, but ask explicitly so a default change can't drop them.
   u.searchParams.set('directModes', 'WALK');

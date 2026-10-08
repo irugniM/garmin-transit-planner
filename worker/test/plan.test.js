@@ -233,10 +233,12 @@ test('walk faster than the bus: show the walk, bus as a compact option', () => {
   // A walk of 20 min or less wins at the same arrival.
   const bus15 = trip('08:00', '08:15', ['9']);
   assert.deepEqual(trimPlan({ itineraries: [bus15], direct: [walkDirect(15 * 60)] }, { t: T0 }).lines, ['Walk 15 min', 'Arrive 08:15']);
-  // ...and loses when slower; it fills an empty `next`.
-  const slow = trimPlan({ itineraries: [trip('08:00', '08:10', ['9'])], direct: [walkDirect(15 * 60)] }, { t: T0 });
+  // ...and loses when slower; within 10 min of the bus it is an optional
+  // last line, `next` keeps the next bus.
+  const slow = trimPlan({ itineraries: [trip('08:00', '08:10', ['9']), trip('08:20', '08:30', ['9'])], direct: [walkDirect(15 * 60)] }, { t: T0 });
   assert.equal(slow.lines[0], 'Leave 08:00');
-  assert.equal(slow.next, 'Walk 15m arr 08:15');
+  assert.equal(slow.lines.at(-1), 'Walk 15m arr 08:15');
+  assert.equal(slow.next, 'Next: 08:20');
   // Arrive-by, short walk: wins when you can leave no earlier than for the bus.
   const by = at('2026-10-08T08:30:00-04:00');
   const a = trimPlan({ itineraries: [trip('08:10', '08:28', ['9'])], direct: [walkDirect(18 * 60, by - 18 * 60)] }, { mode: 'arrive', t: by });
@@ -247,16 +249,26 @@ test('walk faster than the bus: show the walk, bus as a compact option', () => {
 
 test('long walks (over 20 min) win only when 15 min faster or no bus within 90 min', () => {
   const tq = fx('masonville_to_school_0800'); // chosen bus arrives 08:27
-  // Same arrival: the bus is the main answer, the walk goes in `next`
-  // (instead of "Next: 08:15").
+  // Same arrival: the bus is the main answer, `next` is the next bus and the
+  // walk is an optional last line.
   tq.direct = [walkDirect(27 * 60)];
   let r = trimPlan(tq, { t: T0, alerts: ALERTS });
   checkShape(r);
   assert.equal(r.lines[0], 'Leave 08:10');
-  assert.equal(r.next, 'Walk 27m arr 08:27');
+  assert.deepEqual(r.lines.slice(-2), ['Arrive 08:27', 'Walk 27m arr 08:27']);
+  assert.equal(r.next, 'Next: 08:15');
   // 6 min faster is not enough.
   tq.direct = [walkDirect(21 * 60)];
-  assert.equal(trimPlan(tq, { t: T0 }).next, 'Walk 21m arr 08:21');
+  r = trimPlan(tq, { t: T0 });
+  assert.equal(r.lines.at(-1), 'Walk 21m arr 08:21');
+  assert.equal(r.next, 'Next: 08:15');
+  // More than 10 min after the bus: not a real alternative, no walk line.
+  tq.direct = [walkDirect(38 * 60)];
+  r = trimPlan(tq, { t: T0 });
+  assert.equal(r.lines.at(-1), 'Arrive 08:27');
+  assert.equal(r.next, 'Next: 08:15');
+  tq.direct = [walkDirect(37 * 60)];
+  assert.equal(trimPlan(tq, { t: T0 }).lines.at(-1), 'Walk 37m arr 08:37');
   // 15 min faster (or more) wins.
   const bus50 = trip('08:05', '08:50', ['9']);
   r = trimPlan({ itineraries: [bus50], direct: [walkDirect(35 * 60)] }, { t: T0 });
@@ -269,7 +281,8 @@ test('long walks (over 20 min) win only when 15 min faster or no bus within 90 m
   assert.deepEqual(trimPlan({ itineraries: [bus931], direct: [walkDirect(85 * 60)] }, { t: T0 }).lines, ['Walk 85 min', 'Arrive 09:25']);
   r = trimPlan({ itineraries: [bus929], direct: [walkDirect(85 * 60)] }, { t: T0 });
   assert.equal(r.lines[0], 'Leave 08:50');
-  assert.equal(r.next, 'Walk 85m arr 09:25');
+  assert.equal(r.lines.at(-1), 'Walk 85m arr 09:25');
+  assert.equal(r.next, null);
   // Night: first bus in the morning, so a long walk is the answer.
   const night = at('2026-10-08T02:00:00-04:00');
   const morning = trip('05:40', '06:14', ['9']);
@@ -284,16 +297,25 @@ test('long walks (over 20 min) win only when 15 min faster or no bus within 90 m
   r = trimPlan(arr, { mode: 'arrive', t });
   checkShape(r);
   assert.equal(hhmm(r.leave), '12:09');
-  assert.equal(r.next, 'Walk 45m lv 12:15');
+  assert.equal(r.lines.at(-1), 'Walk 45m lv 12:15');
+  assert.equal(r.next, 'Earlier: 12:07');
   arr.direct = [walkDirect(36 * 60, t - 36 * 60)]; // leave 12:24
   r = trimPlan(arr, { mode: 'arrive', t });
   assert.deepEqual(r.lines, ['Walk 36 min', 'Arrive 13:00']);
   assert.equal(r.next, 'Bus: leave 12:09');
-  // Every walk note fits.
+  // Every walk note fits; it is dropped first when space runs out (before
+  // the Direct option).
   for (const m of [1, 9, 21, 59, 90]) {
     const x = trimPlan({ itineraries: [trip('08:00', '08:05', ['9'])], direct: [walkDirect(m * 60)] }, { t: T0 });
-    assert.ok(x.next.length <= MAX_LINE, x.next);
+    checkShape(x);
   }
+  const fast = trip('05:40', '06:05', ['10', '27']);
+  const late = trip('05:58', '06:16', ['9']);
+  const full = trimPlan({ itineraries: [fast, late], direct: [walkDirect(34 * 60, at('2026-10-08T05:40:00-04:00'))] }, { t: at('2026-10-08T05:40:00-04:00') });
+  assert.deepEqual(full.lines.slice(-4), ['Arrive 06:05', 'Direct 9 05:58', 'arr 06:16', 'Walk 34m arr 06:14']);
+  const less = trimPlan({ itineraries: [fast, late], direct: [walkDirect(34 * 60, at('2026-10-08T05:40:00-04:00'))] },
+    { t: at('2026-10-08T05:40:00-04:00'), maxBytes: Buffer.byteLength(JSON.stringify(full)) - 1 });
+  assert.deepEqual(less.lines.slice(-3), ['Arrive 06:05', 'Direct 9 05:58', 'arr 06:16']);
 });
 
 test('bus trip with a slower walk and no later bus mentions the walk', () => {

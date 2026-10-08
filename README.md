@@ -66,9 +66,9 @@ Reply (times are America/Toronto, lines are at most 18 characters):
   or `Board at #1143` when there is no walk), except a transfer at the same stop
   the previous bus left you at (its `Off #1234` line names it). Every bus has its
   `Off` line, and a trip ends with the final walk and `Arrive`. There is no line
-  limit; if a reply would pass 600 bytes, the single-bus alternative, then
-  headsign lines (middle legs first), then `Leave` are dropped, never the
-  transfer count, Board, Bus, Off, the last walk or Arrive.
+  limit; if a reply would pass 600 bytes, the walk line, the single-bus
+  alternative, headsign lines (middle legs first), then `Leave` are dropped,
+  never the transfer count, Board, Bus, Off, the last walk or Arrive.
 - If a stop you board at or get off at is closed for that route (LTC alerts
   feed), a line right under its `Walk .. to #X` / `Board at #X` / `Off #X`
   line says where to go: `Temp stop 130m W`, `Temp 2 poles S`,
@@ -87,8 +87,10 @@ Reply (times are America/Toronto, lines are at most 18 characters):
   the reply is
   `"lines":["Walk 12 min","Arrive 08:12"]`, `xfers` 0, with the bus as
   `"next":"Bus: arr 08:26"` (arrive-by: `Bus: leave 07:58`). When the bus wins,
-  a walk over 20 min replaces `Next:` as `"next":"Walk 27m arr 08:27"`
-  (arrive-by: `Walk 27m lv 07:33`); a shorter one only fills an empty `next`.
+  `next` stays `Next: HH:MM`; if the walk gets there at most 10 min after the
+  bus (arrive-by: leaves at most 10 min earlier) it is an optional last line,
+  `Walk 42m arr 13:41` (arrive-by: `Walk 42m lv 12:18`), dropped first when
+  space runs out. A slower walk only fills an empty `next`.
 
 Errors are `{"v":1,"ok":false,"err":"..."}` with HTTP 200 so the watch can show
 the text: `Bad token`, `Token not set`, `Bad params`, `Home not set`,

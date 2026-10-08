@@ -187,11 +187,13 @@ export function itineraryLines(it) {
   return itineraryItems(it).map((x) => x.t);
 }
 
-// Drop order when a reply is over budget: the no-transfer alternative, headsign lines (middle legs first,
+// Drop order when a reply is over budget: the walk alternative, the
+// no-transfer alternative, headsign lines (middle legs first,
 // the first leg's last), then the Leave line (the watch shows the leave time
 // in its header anyway). The transfer count, Board, Bus, Off, the last walk
 // and Arrive are never dropped.
 function dropRank(x) {
+  if (x.k === 'walkalt') return -2;
   if (x.k === 'alt') return -1;
   if (x.k === 'to') return x.n === 0 ? 2 : x.n === x.of - 1 ? 1 : 0;
   if (x.k === 'leave') return 3;
@@ -356,10 +358,12 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
   }
 
   const legs = chosen.legs || [];
-  // A long walk that lost to the bus is still worth a mention; it takes the
-  // place of "Next:". A short slower walk only fills an empty `next`.
+  // `next` stays "Next:"/"Earlier:". A walk that lost but is a real
+  // alternative (gets there at most 10 min after the bus; arrive-by: leaves
+  // at most 10 min before it) is an optional last line instead.
+  const walkLine = w && (mode === 'arrive' ? w.leave >= busLeave - WALK_ALT : w.arr <= busArr + WALK_ALT);
   let next = other;
-  if (w && (w.dur > LONG_WALK || !next)) next = walkNote(w, mode);
+  if (!next && w && !walkLine) next = walkNote(w, mode);
   const reply = {
     v: 1,
     ok: true,
@@ -373,6 +377,7 @@ export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX
   };
   const items = itineraryItems(chosen, alerts);
   if (reply.xfers > 0) items.push(...altItems(its, chosen, mode, t));
+  if (walkLine) items.push({ k: 'walkalt', t: walkNote(w, mode) });
   reply.lines = compactItems(items, (lines) => byteLen({ ...reply, lines }) <= maxBytes);
   return reply;
 }
@@ -406,6 +411,7 @@ function altItems(its, chosen, mode, t) {
 // leave 15 min later), or no bus gets there within 90 min of t (arrive-by:
 // the bus would be late, or gets there over 90 min early), e.g. at night.
 export const LONG_WALK = 1200;
+export const WALK_ALT = 600;
 export const LONG_WALK_GAIN = 900;
 export const BUS_HORIZON = 5400;
 

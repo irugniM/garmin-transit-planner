@@ -53,7 +53,7 @@ test('plan to school: Transitous query and trimmed reply', async () => {
   assert.equal(u.searchParams.get('fromPlace'), '43.02550,-81.28160');
   assert.equal(u.searchParams.get('toPlace'), '43.00129,-81.27883');
   assert.equal(u.searchParams.get('arriveBy'), 'false');
-  assert.equal(u.searchParams.get('numItineraries'), '3');
+  assert.equal(u.searchParams.get('numItineraries'), '5');
   assert.equal(u.searchParams.get('time'), '2026-10-08T12:00:00.000Z');
   assert.equal(u.searchParams.get('directModes'), 'WALK');
   assert.equal(u.searchParams.get('maxDirectTime'), '5400');
