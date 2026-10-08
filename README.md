@@ -68,6 +68,13 @@ Reply (times are America/Toronto, lines are at most 18 characters):
   than the latest-leaving trip). Ties go to the earlier arrival, then less
   walking. A trip is never picked if another gets there no later (arrive-by:
   leaves no earlier) with over 10 min less walking.
+- Near `HOME_LATLON` (within 150 m), unrealistic detour walks to the first
+  stop are replaced by a straight-line estimate: if the routed walk is over 3x
+  the straight line to a stop under 300 m away, it becomes
+  max(2 min, straight x 1.3 / 1.2 m/s) and `Leave` is recomputed from the bus
+  time. Depart queries from there ask Transitous 5 min early and then drop
+  trips that would mean leaving before the requested time. Elsewhere, and for
+  walk-only trips, Transitous's times are used as is.
 - Line 2 (after `Leave`) is the transfer count: `No transfer`, `1 transfer`,
   `2 transfers` (not on walk-only or `You're here` replies).
 - If the trip has transfers and Transitous also found a single-bus trip (that

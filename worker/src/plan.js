@@ -380,6 +380,79 @@ export function bestWalk(tq) {
 
 // Fewer transfers win when they cost at most this much (later arrival, or
 // for arrive-by an earlier leave).
+// ---- near home: unrealistic detour walks to the first stop -----------------
+// From home, Transitous sometimes routes the walk to a stop ~100 m away as a
+// ~500 m detour, which makes "Leave" minutes too early and hides buses that
+// are still catchable. Near HOME_LATLON (a Worker secret) the query is made
+// NEAR_SHIFT earlier (depart), such first walks are replaced by a
+// straight-line estimate, and trips you could no longer catch are dropped.
+export const NEAR_HOME_M = 150;
+export const NEAR_SHIFT = 300; // seconds
+export const DETOUR_FACTOR = 3; // routed walk over 3x the straight line...
+export const DETOUR_MAX_STRAIGHT = 300; // ...to a stop under 300 m away
+export const WALK_SPEED = 1.2; // m/s
+export const STRAIGHT_FACTOR = 1.3; // straight line to street distance
+export const MIN_FIRST_WALK = 120; // seconds
+
+const isoOf = (secs) => new Date(secs * 1000).toISOString().replace('.000Z', 'Z');
+
+function walkDistance(leg) {
+  const d = Number(leg.distance);
+  if (Number.isFinite(d) && leg.distance !== null) return d;
+  const steps = Array.isArray(leg.steps) ? leg.steps : [];
+  const sum = steps.reduce((n, st) => n + (Number(st?.distance) || 0), 0);
+  return steps.length && sum > 0 ? sum : null;
+}
+
+// The itinerary with its first walk replaced, or the same object when the
+// rule doesn't apply. `origin` is the request position { lat, lon }.
+export function fixFirstWalk(it, origin) {
+  const legs = it?.legs || [];
+  const k = legs.findIndex(isTransit);
+  if (k < 1 || legs.slice(0, k).some((l) => l.mode !== 'WALK')) return it;
+  const bus = legs[k];
+  const stop = bus.from;
+  if (!bus.startTime || !stop || !Number.isFinite(Number(stop.lat)) || !Number.isFinite(Number(stop.lon)) ||
+      stop.lat === null || stop.lon === null) return it;
+  const routed = legs.slice(0, k).reduce((n, l) => (n === null ? null : (walkDistance(l) === null ? null : n + walkDistance(l))), 0);
+  if (routed === null) return it;
+  const straight = metres(origin, { lat: Number(stop.lat), lon: Number(stop.lon) });
+  if (!(straight < DETOUR_MAX_STRAIGHT && routed > DETOUR_FACTOR * straight)) return it;
+  const walk = Math.max(MIN_FIRST_WALK, Math.ceil((straight * STRAIGHT_FACTOR) / WALK_SPEED));
+  const dep = toSecs(bus.startTime);
+  const leave = dep - walk;
+  const first = legs[0];
+  const walkLeg = {
+    ...first,
+    to: legs[k - 1].to,
+    startTime: isoOf(leave),
+    endTime: isoOf(dep),
+    duration: walk,
+    distance: Math.round(straight * STRAIGHT_FACTOR),
+    estimated: true,
+  };
+  delete walkLeg.steps;
+  delete walkLeg.legGeometry;
+  if (walkLeg.scheduledStartTime) walkLeg.scheduledStartTime = walkLeg.startTime;
+  if (walkLeg.scheduledEndTime) walkLeg.scheduledEndTime = walkLeg.endTime;
+  const end = it.endTime ? toSecs(it.endTime) : null;
+  return {
+    ...it,
+    startTime: isoOf(leave),
+    ...(end !== null ? { duration: end - leave } : {}),
+    legs: [walkLeg, ...legs.slice(k)],
+  };
+}
+
+// Near home: fix first walks; for depart queries (time shifted earlier by
+// NEAR_SHIFT) drop trips that would mean leaving before `t`.
+export function nearHomePlan(tq, origin, mode, t) {
+  if (!tq || !Array.isArray(tq.itineraries)) return tq;
+  let its = tq.itineraries.map((it) => fixFirstWalk(it, origin));
+  if (mode !== 'arrive') its = its.filter((it) => !it.startTime || toSecs(it.startTime) >= t);
+  return { ...tq, itineraries: its };
+}
+
 export const XFER_SLACK = 600;
 // A trip is out if another one gets there no later (arrive-by: leaves no
 // earlier) and walks more than this much less. Keeps the long walks to a

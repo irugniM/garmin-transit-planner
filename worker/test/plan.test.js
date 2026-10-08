@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { toSecs } from '../src/plan.js';
 import {
   alertDetail, alertFor, bestWalk, compactAlerts, compactItems, hereReply, hhmm, itineraryLines, legStops, metres, splitHeadsign,
-  trimPlan, HARD_MAX, HERE_M, MAX_LINE, MAX_REPLY,
+  trimPlan, HARD_MAX, HERE_M, MAX_LINE, MAX_REPLY, fixFirstWalk, nearHomePlan, MIN_FIRST_WALK,
 } from '../src/plan.js';
 
 const fx = (n) => JSON.parse(readFileSync(new URL(`./fixtures/${n}.json`, import.meta.url), 'utf8'));
@@ -821,4 +821,115 @@ test('hard cap: over 600 B with nothing left to drop is still ok up to 1200 B; o
   assert.ok(Buffer.byteLength(JSON.stringify(untrimmed)) > n);
   assert.equal(trimPlan({ itineraries: [longTrip(7)] }, { t: T0, to, hardMax: n }).ok, true);
   assert.equal(trimPlan({ itineraries: [longTrip(7)] }, { t: T0, to, hardMax: n - 1 }).err, 'Trip too long');
+});
+
+// ---- near home: detour walks to the first stop --------------------------------
+// Made-up places only: a fake "home" origin on Western's campus and fake stops.
+
+const ORIGIN = { lat: 43.008, lon: -81.275 };
+const north = (m) => ({ lat: ORIGIN.lat + m / 111195, lon: ORIGIN.lon }); // ~m metres N
+// Walk to a stop `stopM` metres N (routed `routed` m, taking walkS s), bus at
+// dep for 10 min, 2 min walk to the end.
+function detourTrip(dep, { stopM = 99, routed = 500, walkS = 420, code = '9001', route = '6' } = {}) {
+  const s = north(stopM);
+  const stop = { name: `Test Stop ${code} NB - #${code}`, stopId: `T${code}`, stopCode: code, lat: s.lat, lon: s.lon };
+  const off = { name: 'Test Stop Far SB - #9099', stopId: 'T9099', stopCode: '9099', lat: 43.0013, lon: -81.2788 };
+  return {
+    startTime: iso(dep - walkS), endTime: iso(dep + 720), duration: walkS + 720, transfers: 0,
+    legs: [
+      { mode: 'WALK', from: { name: 'START', lat: ORIGIN.lat, lon: ORIGIN.lon }, to: stop, startTime: iso(dep - walkS), endTime: iso(dep), duration: walkS, distance: routed },
+      { mode: 'BUS', routeShortName: route, headsign: 'Somewhere', from: stop, to: off, startTime: iso(dep), endTime: iso(dep + 600), duration: 600 },
+      { mode: 'WALK', from: off, to: { name: 'END' }, startTime: iso(dep + 600), endTime: iso(dep + 720), duration: 120, distance: 100 },
+    ],
+  };
+}
+
+test('near home: a detour first walk is replaced by the straight line (2 min minimum), leave recomputed', () => {
+  const dep = T0 + 600;
+  const it = detourTrip(dep); // 99 m straight, 500 m routed, 7 min
+  const f = fixFirstWalk(it, ORIGIN);
+  assert.notEqual(f, it);
+  // ceil(99 * 1.3 / 1.2) = 108 s, raised to the 2-min minimum.
+  assert.equal(MIN_FIRST_WALK, 120);
+  assert.equal(f.legs[0].duration, 120);
+  assert.equal(toSecs(f.startTime), dep - 120);
+  assert.equal(toSecs(f.legs[0].endTime), dep);
+  assert.equal(f.legs.length, 3);
+  assert.equal(f.endTime, it.endTime);
+  assert.deepEqual(f.legs.slice(1), it.legs.slice(1));
+  const r = trimPlan({ itineraries: [f] }, { t: T0 });
+  assert.equal(r.leave, dep - 120);
+  assert.equal(r.lines[0], `Leave ${hhmm(dep - 120)}`);
+  assert.ok(r.lines.includes('Walk 2m to #9001'), r.lines.join('|'));
+  // Above the minimum: ~250 m straight -> ceil(250 * 1.3 / 1.2).
+  const g = fixFirstWalk(detourTrip(dep, { stopM: 250, routed: 1000, walkS: 900 }), ORIGIN);
+  const straight = metres(ORIGIN, north(250));
+  assert.equal(g.legs[0].duration, Math.ceil((straight * 1.3) / 1.2));
+  assert.ok(g.legs[0].duration > 120);
+  assert.equal(toSecs(g.startTime), dep - g.legs[0].duration);
+});
+
+test('near home: 3x and 300 m thresholds; other trips keep Transitous times', () => {
+  const dep = T0 + 600;
+  const straight = metres(ORIGIN, north(99));
+  // Routed exactly 3x the straight line: kept; just over: replaced.
+  const at3 = detourTrip(dep, { routed: 3 * straight });
+  assert.equal(fixFirstWalk(at3, ORIGIN), at3);
+  assert.notEqual(fixFirstWalk(detourTrip(dep, { routed: 3 * straight + 1 }), ORIGIN), detourTrip(dep, { routed: 3 * straight + 1 }));
+  assert.equal(fixFirstWalk(detourTrip(dep, { routed: 3 * straight + 1 }), ORIGIN).legs[0].duration, 120);
+  // Stop 310 m away: never replaced, however long the detour.
+  const far = detourTrip(dep, { stopM: 310, routed: 3000, walkS: 1500 });
+  assert.equal(fixFirstWalk(far, ORIGIN), far);
+  const near299 = detourTrip(dep, { stopM: 299, routed: 3000, walkS: 1500 });
+  assert.notEqual(fixFirstWalk(near299, ORIGIN), near299);
+  // No walk first (board right away), no distance, walk-only: unchanged.
+  const board = { ...detourTrip(dep), legs: detourTrip(dep).legs.slice(1) };
+  assert.equal(fixFirstWalk(board, ORIGIN), board);
+  const noDist = detourTrip(dep);
+  delete noDist.legs[0].distance;
+  assert.equal(fixFirstWalk(noDist, ORIGIN), noDist);
+  const walkOnly = walkDirect(600);
+  assert.equal(fixFirstWalk(walkOnly, ORIGIN), walkOnly);
+  // Split walk legs: distances are added, then merged into one walk.
+  const split = detourTrip(dep);
+  const mid = north(50);
+  const w = split.legs[0];
+  split.legs.splice(0, 1,
+    { ...w, to: { name: 'corner', lat: mid.lat, lon: mid.lon }, endTime: iso(dep - 200), duration: 220, distance: 300 },
+    { ...w, from: { name: 'corner', lat: mid.lat, lon: mid.lon }, startTime: iso(dep - 200), duration: 200, distance: 200 });
+  const fs = fixFirstWalk(split, ORIGIN);
+  assert.equal(fs.legs.length, 3);
+  assert.equal(fs.legs[0].duration, 120);
+  assert.equal(fs.legs[0].to.stopCode, '9001');
+});
+
+test('near home: trips you can no longer catch are dropped; Next bus stays strictly later', () => {
+  // Query was made 5 min early: Transitous gives buses at +1, +4, +12 min,
+  // each with a 7 min detour walk (so all "leave" before now).
+  const its = [detourTrip(T0 + 60, { code: '9001' }), detourTrip(T0 + 240, { code: '9001' }), detourTrip(T0 + 720, { code: '9001' })];
+  const away = trimPlan({ itineraries: its }, { t: T0 });
+  const tq = nearHomePlan({ itineraries: its }, ORIGIN, 'depart', T0);
+  // +1 min: leave would be T0 - 60 -> dropped. +4 and +12 stay.
+  assert.deepEqual(tq.itineraries.map((it) => toSecs(it.startTime)), [T0 + 120, T0 + 600]);
+  const r = trimPlan(tq, { t: T0 });
+  assert.equal(r.leave, T0 + 120);
+  assert.ok(r.lines.includes(`Bus 6 ${hhmm(T0 + 240)}`));
+  assert.equal(r.next, `Next bus ${hhmm(T0 + 720)}`);
+  // Without the fix the earliest catchable-looking trip leaves 7 min before its bus.
+  assert.equal(away.leave, T0 + 60 - 420);
+  // A trip whose Transitous leave is before now and isn't fixed is dropped too.
+  const late = detourTrip(T0 + 120, { stopM: 310, routed: 600, walkS: 300 });
+  assert.equal(nearHomePlan({ itineraries: [late] }, ORIGIN, 'depart', T0).itineraries.length, 0);
+  // The chosen bus's own departure is never the Next bus.
+  const same = nearHomePlan({ itineraries: [detourTrip(T0 + 240), detourTrip(T0 + 240, { code: '9002' })] }, ORIGIN, 'depart', T0);
+  assert.equal(trimPlan(same, { t: T0 }).next, null);
+  // Nothing left (and no walk): the usual error.
+  assert.equal(trimPlan(nearHomePlan({ itineraries: [its[0]] }, ORIGIN, 'depart', T0), { t: T0 }).err, 'No trips found');
+});
+
+test('near home, arrive-by: walks fixed, nothing dropped for leaving early', () => {
+  const its = [detourTrip(T0 - 1800), detourTrip(T0 - 900)];
+  const tq = nearHomePlan({ itineraries: its }, ORIGIN, 'arrive', T0 + 600);
+  assert.equal(tq.itineraries.length, 2);
+  assert.deepEqual(tq.itineraries.map((it) => toSecs(it.startTime)), [T0 - 1800 - 120, T0 - 900 - 120]);
 });

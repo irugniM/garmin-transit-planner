@@ -1,7 +1,7 @@
 // LTCTrip Worker logic: GET /v1/plan and GET /v1/ping. See ../../README.md.
 // The Worker entry (index.js) may only export handlers, so the testable
 // pieces live here.
-import { compactAlerts, errorReply, hereReply, metres, trimPlan, HERE_M } from './plan.js';
+import { compactAlerts, errorReply, hereReply, metres, nearHomePlan, trimPlan, HERE_M, NEAR_HOME_M, NEAR_SHIFT } from './plan.js';
 
 export const VERSION = '0.1';
 export const USER_AGENT = `LTCTrip/${VERSION} (+https://github.com/irugniM)`;
@@ -124,11 +124,16 @@ export async function planTrip(params, env, deps) {
   }
   // Already there: no need to ask Transitous.
   if (metres({ lat, lon }, to) <= HERE_M) return hereReply(now, to);
+  // Near home (HOME_LATLON secret): ask a bit earlier and fix detour walks
+  // to the first stop (see nearHomePlan). Elsewhere nothing changes.
+  const home = parseLatLon(env.HOME_LATLON);
+  const nearHome = Boolean(home) && metres({ lat, lon }, home) <= NEAR_HOME_M;
+  const qt = nearHome && mode === 'depart' ? t - NEAR_SHIFT : t;
 
   const u = new URL(TRANSITOUS);
   u.searchParams.set('fromPlace', `${lat.toFixed(5)},${lon.toFixed(5)}`);
   u.searchParams.set('toPlace', `${to.lat},${to.lon}`);
-  u.searchParams.set('time', new Date(Math.floor(t) * 1000).toISOString());
+  u.searchParams.set('time', new Date(Math.floor(qt) * 1000).toISOString());
   u.searchParams.set('arriveBy', mode === 'arrive' ? 'true' : 'false');
   // 5, not 3: the chosen trip is often the last of three, which left no
   // "Next:" bus to show.
@@ -154,6 +159,7 @@ export async function planTrip(params, env, deps) {
   } catch (_) {
     return errorReply('Transitous down');
   }
+  if (nearHome) tq = nearHomePlan(tq, { lat, lon }, mode, t);
   const alerts = await alertsP;
   return trimPlan(tq, { mode, t, alerts, to });
 }

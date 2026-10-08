@@ -9,6 +9,8 @@ const NOW = at('2026-10-08T08:00:00-04:00');
 // Test-only home: Masonville Place (public). The real one is a Worker secret.
 const ENV = { TOKEN: 'test-token', HOME_LATLON: '43.02566,-81.2815' };
 const BASE = 'https://w.example/v1/plan?lat=43.0255&lon=-81.2816&k=test-token';
+// Same token, test home far away (White Oaks Mall): BASE is not near home.
+const ENV_AWAY = { TOKEN: 'test-token', HOME_LATLON: '42.98220,-81.25120' };
 
 function fakeFetch({ plan = 'masonville_to_school_0800', planStatus = 200, alerts = 'alerts_handmade', alertsFail = false, planFail = false } = {}) {
   const calls = [];
@@ -40,7 +42,7 @@ test('ping needs no token', async () => {
 
 test('plan to school: Transitous query and trimmed reply', async () => {
   const f = fakeFetch();
-  const r = await call(`${BASE}&dest=school`, { fetchImpl: f });
+  const r = await call(`${BASE}&dest=school`, { fetchImpl: f, env: ENV_AWAY });
   assert.equal(r.status, 200);
   assert.equal(r.body.ok, true);
   // The single bus at 08:10 (1 min later than the transfer trip) is chosen.
@@ -180,4 +182,67 @@ test('walk-only reply when Transitous has only `direct`', async () => {
     v: 1, ok: true, leave: NOW, arr: NOW + 480, rt: false, xfers: 0, lines: ['Walk 8 min', 'Arrive 08:08'], alert: null, next: null,
     pts: { d: [43.00129, -81.27883] },
   });
+});
+
+// ---- near home ----------------------------------------------------------------
+// BASE (43.0255,-81.2816) is ~18 m from the test home (Masonville). Fake stops.
+const iso = (secs) => new Date(secs * 1000).toISOString();
+function detourTq(deps) {
+  const stop = { name: 'Test Stop NB - #9001', stopId: 'T9001', stopCode: '9001', lat: 43.02639, lon: -81.2816 }; // ~99 m N
+  const off = { name: 'Test Stop Far SB - #9099', stopId: 'T9099', stopCode: '9099', lat: 43.0013, lon: -81.2788 };
+  return {
+    itineraries: deps.map((dep) => ({
+      startTime: iso(dep - 420), endTime: iso(dep + 720), duration: 1140, transfers: 0,
+      legs: [
+        { mode: 'WALK', from: { name: 'START', lat: 43.0255, lon: -81.2816 }, to: stop, startTime: iso(dep - 420), endTime: iso(dep), duration: 420, distance: 500 },
+        { mode: 'BUS', routeShortName: '6', headsign: 'Somewhere', from: stop, to: off, startTime: iso(dep), endTime: iso(dep + 600), duration: 600 },
+        { mode: 'WALK', from: off, to: { name: 'END' }, startTime: iso(dep + 600), endTime: iso(dep + 720), duration: 120, distance: 100 },
+      ],
+    })),
+    direct: [],
+  };
+}
+function tqFetch(tq) {
+  const calls = [];
+  const f = async (url) => {
+    calls.push(String(url));
+    return new Response(String(url) === ALERTS_URL ? '{"entity":[]}' : JSON.stringify(tq));
+  };
+  f.calls = calls;
+  return f;
+}
+const timeOf = (f) => new URL(f.calls.find((c) => c.includes('transitous'))).searchParams.get('time');
+
+test('near home, depart: asks 5 min earlier, straight-line first walk, missed buses dropped', async () => {
+  const f = tqFetch(detourTq([NOW + 60, NOW + 240, NOW + 720]));
+  const r = await call(`${BASE}&dest=school`, { fetchImpl: f });
+  assert.equal(timeOf(f), '2026-10-08T11:55:00.000Z');
+  assert.equal(r.body.ok, true);
+  assert.equal(r.body.leave, NOW + 120);
+  assert.equal(r.body.lines[0], 'Leave 08:02');
+  assert.ok(r.body.lines.includes('Walk 2m to #9001'));
+  assert.ok(r.body.lines.includes('Bus 6 08:04'));
+  assert.equal(r.body.next, 'Next bus 08:12');
+  assert.ok(r.bytes <= 600);
+});
+
+test('near home, arrive-by: time unchanged, walk still fixed', async () => {
+  const f = tqFetch(detourTq([NOW - 1800]));
+  const t = NOW + 600;
+  const r = await call(`${BASE}&dest=school&mode=arrive&t=${t}`, { fetchImpl: f });
+  assert.equal(timeOf(f), iso(t));
+  assert.equal(r.body.leave, NOW - 1800 - 120);
+});
+
+test('away from home: no shift and Transitous walk times kept', async () => {
+  const f = tqFetch(detourTq([NOW + 60, NOW + 240, NOW + 720]));
+  const r = await call(`${BASE}&dest=school`, { fetchImpl: f, env: ENV_AWAY });
+  assert.equal(timeOf(f), '2026-10-08T12:00:00.000Z');
+  assert.equal(r.body.leave, NOW + 60 - 420);
+  assert.ok(r.body.lines.includes('Walk 7m to #9001'));
+  // No home secret at all: same.
+  const g = tqFetch(detourTq([NOW + 60]));
+  const r2 = await call(`${BASE}&dest=school`, { fetchImpl: g, env: { TOKEN: 'test-token' } });
+  assert.equal(timeOf(g), '2026-10-08T12:00:00.000Z');
+  assert.equal(r2.body.leave, NOW + 60 - 420);
 });
