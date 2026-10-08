@@ -31,7 +31,7 @@ Pick To School or To Home. Arrow On/Off is right on the menu.
 ![Trip screen: stop and bus](docs/02b-trip-bus.png)
 ![Trip screen: arrival and next bus](docs/02c-trip-arrive.png)
 
-When to leave, which bus, transfers and arrival time on one screen, with no map.
+When to leave, which bus, transfers and arrival time, scrolling right on the watch with no map.
 
 ![You're here](docs/04-youre-here.png)
 
