@@ -87,16 +87,23 @@ class MenuView extends WatchUi.View {
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         var f = Graphics.FONT_XTINY;
         var list = items();
-        var pitch = 22;
+        // 22 px rows and 4 of them on the Instinct; elsewhere as many as fit.
+        var pitch = Layout.s(dc, 22);
+        if (pitch < dc.getFontHeight(f) + 3) {
+            pitch = dc.getFontHeight(f) + 3;
+        }
         var top = Layout.bodyTop();
-        var rows = 4;
+        var rows = (dc.getHeight() - top - Layout.s(dc, 18)) / pitch;
+        if (rows < 3) {
+            rows = 3;
+        }
         var first = sel - (rows - 1);
         if (first < 0) {
             first = 0;
         }
-        Layout.drawLeft(dc, 18, f, "LTC Trip");
+        Layout.title(dc, f);
         if (first == 0) {
-            Layout.drawLeft(dc, 40, f, "Depart now");
+            Layout.drawLeft(dc, Layout.s(dc, 40), f, "Depart now");
         }
         for (var i = 0; i < rows && first + i < list.size(); i += 1) {
             Layout.drawItem(dc, top + i * pitch, f, list[first + i][0], first + i == sel);

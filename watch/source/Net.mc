@@ -1,5 +1,6 @@
 import Toybox.Communications;
 import Toybox.Lang;
+import Toybox.Position;
 import Toybox.WatchUi;
 
 // Worker calls. Base URL and token come from string resources that live in
@@ -42,9 +43,23 @@ module Net {
         post("/v1/plan", body, cb);
     }
 
-    // Address -> {"ok", "lat", "lon"} or {"ok" => false, "err"}.
+    // Address -> {"ok", "lat", "lon"} or {"ok" => false, "err"}. Sends
+    // where the watch is (current or last known fix) so the Worker searches
+    // near there; without any position it searches near London, ON.
     function geocode(addr as String, cb) as Void {
-        post("/v1/geocode", { "q" => addr }, cb);
+        var body = { "q" => addr };
+        var p = Gps.pos;
+        if (p == null) {
+            var info = Position.getInfo();
+            if (info != null && info.position != null && info.accuracy != Position.QUALITY_NOT_AVAILABLE) {
+                p = info.position.toDegrees();
+            }
+        }
+        if (p != null) {
+            body["lat"] = (p[0] as Double).format("%.3f");
+            body["lon"] = (p[1] as Double).format("%.3f");
+        }
+        post("/v1/geocode", body, cb);
     }
 
     // Private list: {"ok", "places" => [{"id", "n"}]} (names only).

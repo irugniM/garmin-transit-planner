@@ -509,12 +509,12 @@ class TripView extends WatchUi.View {
 
         if (reply != null && (state == S_OK || state == S_ERR)) {
             var lt = leaveText();
-            Layout.drawLeft(dc, 18, f, lt[0]);
-            Layout.drawLeft(dc, 38, big, lt[1]);
+            Layout.drawLeft(dc, Layout.s(dc, 18), f, lt[0]);
+            Layout.drawLeft(dc, Layout.s(dc, 38), big, lt[1]);
         } else {
             var t = title();
-            Layout.drawLeft(dc, 18, f, "LTC Trip");
-            Layout.drawLeft(dc, 40, f, t);
+            Layout.title(dc, f);
+            Layout.drawLeft(dc, Layout.s(dc, 40), f, t);
         }
 
         var lines = bodyLines();
@@ -526,6 +526,12 @@ class TripView extends WatchUi.View {
         }
         var shown = lines.slice(scroll, null);
         var top = Layout.bodyTop();
+        // Other watches: start below the big "Leave in" number, whose font
+        // can run lower than on the Instinct (layout tuned there, unchanged).
+        var under = Layout.s(dc, 38) + dc.getFontHeight(big);
+        if (!Layout.realSub() && top < under) {
+            top = under;
+        }
         var barTop = top;
         var list = reply != null && (state == S_OK || state == S_ERR);
         var pitch = dc.getFontHeight(f) - 3;
@@ -534,14 +540,14 @@ class TripView extends WatchUi.View {
         if (list && arrowWanted()) {
             var st = Arrow.state(reply, now());
             Arrow.drawCircle(dc, st);
-            if (Arrow.drawRow(dc, top, f, 8, st)) {
+            if (Arrow.drawRow(dc, top, f, Layout.s(dc, 8), st)) {
                 top += pitch;
             }
         }
-        more = Layout.flow(dc, top, f, pitch, shown, !list, list ? 8 : 0);
+        more = Layout.flow(dc, top, f, pitch, shown, !list, list ? Layout.s(dc, 8) : 0);
         if (list && (more || scroll > 0)) {
             var rows = (dc.getHeight() - top) / pitch;
-            Layout.scrollbar(dc, barTop + 4, barTop + 54, scroll, rows, lines.size());
+            Layout.scrollbar(dc, barTop + Layout.s(dc, 4), barTop + Layout.s(dc, 54), scroll, rows, lines.size());
         }
     }
 }

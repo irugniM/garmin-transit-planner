@@ -64,8 +64,8 @@ class SaveView extends WatchUi.View {
         dc.clear();
         dc.setColor(Graphics.COLOR_WHITE, Graphics.COLOR_TRANSPARENT);
         var f = Graphics.FONT_XTINY;
-        Layout.drawLeft(dc, 18, f, "LTC Trip");
-        Layout.drawLeft(dc, 40, f, ["Save this place", "Save place"]);
+        Layout.title(dc, f);
+        Layout.drawLeft(dc, Layout.s(dc, 40), f, ["Save this place", "Save place"]);
         var lines;
         if (state == W_GPS) {
             lines = ["Getting a GPS fix", Gps.pos != null ? Gps.label() : "Go outside or wait", "BACK: cancel"];

@@ -1,10 +1,12 @@
-# LTC Trip
+# Transit Planner
 
 A personal, text-only Garmin Connect IQ watch app that tells you when to leave
-for the London Transit Commission (LTC) bus in London, Ontario, plus the small
-Cloudflare Worker it talks to.
+for the bus, plus the small Cloudflare Worker it talks to. It works in any city
+[Transitous](https://transitous.org/) covers; in London, Ontario it also shows
+London Transit Commission (LTC) stop closures. It is not affiliated with LTC.
 
-- `watch/`: Connect IQ device app for the Instinct 3 Solar 45mm (`instinct3solar45mm`).
+- `watch/`: Connect IQ device app for 76 watches with API level 5.0 or later
+  (Instinct 3 and E, fenix 7/8/9, epix, Forerunner, Venu, vivoactive, MARQ, ...).
 - `worker/`: Cloudflare Worker. It asks [Transitous](https://transitous.org/) for a
   trip, trims the answer to about 200–500 bytes of display-ready text and adds
   LTC stop-closure alerts.
@@ -43,7 +45,10 @@ Already at your destination? It tells you instead of planning a trip.
   routing service. Data sources and their licences (including OpenStreetMap):
   https://transitous.org/sources/ . Transitous asks API users to be open source,
   non-commercial and to send an identifying User-Agent; this Worker sends
-  `LTCTrip/0.1 (+https://github.com/irugniM)`.
+  `TransitPlanner/0.2 (+https://github.com/irugniM/garmin-transit-planner)`.
+  This is a personal app: Transitous asks apps with many users (over about
+  720 trip plans a day) to coordinate with them first, so it is not published
+  on the Connect IQ Store.
 - Stop-closure alerts come from the **London Transit Commission open data** GTFS-RT
   feed (https://www.londontransit.ca/open-data/), used under the LTC Open Data
   Terms of Use. Thanks, LTC.
@@ -80,15 +85,17 @@ still works the same (older watch builds use it); GET takes only
 `POST /v1/places` with `{"k":"<token>"}` → `{"v":1,"ok":true,"places":[{"id":"1","n":"Covent Garden"}]}`:
 names and ids only, from the `PLACES` secret (empty list when unset).
 
-`POST /v1/geocode` with `{"k":"<token>","q":"<address>"}` →
+`POST /v1/geocode` with `{"k":"<token>","q":"<address>","lat":"43.026","lon":"-81.280"}` →
 `{"v":1,"ok":true,"lat":43.02633,"lon":-81.28005,"n":"Masonville Place"}` or
 `{"v":1,"ok":false,"err":"Address not found"}`. The address is only ever in the
 POST body (GET is refused). The Worker asks Transitous's geocoder
-(`/api/v1/geocode`, biased to London, matches within 150 km only), which
+(`/api/v1/geocode`, biased to `lat`/`lon`, the watch's position rounded to
+about 100 m, with matches within 150 km only; without them, London, ON), which
 necessarily means sending the address text to Transitous. The Worker stores
 and logs nothing; the watch keeps the result.
 
-Reply (times are America/Toronto, lines are at most 18 characters):
+Reply (times are in the trip's local time zone, taken from Transitous's
+reply, America/Toronto when it gives none; lines are at most 18 characters):
 
 ```json
 {"v":1,"ok":true,"leave":1791460860,"arr":1791462360,"rt":false,"xfers":1,
@@ -185,7 +192,8 @@ the text: `Bad token`, `Token not set`, `Bad params`, `Home not set`,
 `Transitous down`, `No trips found`, `Trip too long`, `Place not found`,
 `Address not found`, `Bad address`. Bad JSON or a body over 2 KB gets HTTP 400.
 
-Alerts: the Worker reads LTC's `Alerts.json` (plain http; https on that host is
+Alerts: only for trips that start or end within 60 km of London, ON, the
+Worker reads LTC's `Alerts.json` (plain http; https on that host is
 broken), keeps a compact stop map for 60 s (Cache API plus an in-memory copy,
 because the Cache API may do nothing on `workers.dev`), and if a stop where you
 board or get off has an active alert for that route it sets `alert`, for
@@ -216,7 +224,7 @@ Node 20.3+ (wrangler is pinned to 4.86.0, the last release that runs on Node 20)
 ```sh
 cd worker
 npm install
-npm test                 # node:test, uses the fixtures in test/fixtures
+npm test                 # node:test (Node 20.3+, also 22/24), uses the fixtures in test/fixtures
 npx wrangler dev --local # http://127.0.0.1:8787
 curl 'http://127.0.0.1:8787/v1/plan?lat=43.0102&lon=-81.2732&dest=school&k=dev-token'
 ```
@@ -247,7 +255,7 @@ curl https://ltctrip.<account>.workers.dev/v1/ping
   **Arrow: On/Off** (toggle, saved in Storage, default Off), **Test
   connection**. UP/DOWN move, START opens.
 - Places, three ways (all kept on the watch; the Worker stores nothing):
-  - Phone settings (Connect IQ app → LTC Trip → Settings): up to 5 name +
+  - Phone settings (Connect IQ app → Transit Planner → Settings): up to 5 name +
     address pairs. When they change, the watch asks the Worker to geocode each
     new address once (`POST /v1/geocode`) and keeps the lat/lon in Storage;
     trips then send coordinates. A bad address shows `Address not found` /
@@ -325,7 +333,7 @@ Connect IQ SDK 9.2.0 and a developer key:
 ```sh
 cd watch
 monkeyc -f monkey.jungle -o bin/LTCTrip-debug.prg   -y /path/to/developer_key.der -d instinct3solar45mm -w
-monkeyc -f monkey.jungle -o bin/LTCTrip-release.prg -y /path/to/developer_key.der -d instinct3solar45mm -w -r
+monkeyc -f monkey.jungle -o bin/LTCTrip-release.prg -y /path/to/developer_key.der -d instinct3solar45mm -w -r   # or your watch id from manifest.xml
 monkeydo bin/LTCTrip-debug.prg instinct3solar45mm    # simulator
 ```
 
@@ -335,8 +343,15 @@ In the simulator `makeWebRequest` goes straight to the network, so a
 `resources-secret/secret.xml` with `BaseUrl` = `http://127.0.0.1:8787` works
 against `wrangler dev`. On the real watch the URL must be HTTPS.
 
-### Layout notes (Instinct 3)
+### Layout notes
 
-176×176, 1-bit, round lens, buttons only. All text rows are clipped to the lens
-circle with a 3 px margin, and rows beside the top-right subscreen stay at least
-12 px left of it; full-width rows start 6 px below it. See `watch/source/Layout.mc`.
+Tuned on the Instinct 3 (176×176, 1-bit, round lens, buttons only): all text
+rows are clipped to the lens circle with a 3 px margin, and rows beside the
+top-right subscreen stay at least 12 px left of it; full-width rows start 6 px
+below it. On other watches the same positions scale with the screen height,
+rectangular screens get a matching side margin, and a virtual circle at the
+top right (about a fifth of the screen wide, inside the round edge) takes the
+subscreen's place and holds the arrow. Touch screens work through the usual
+gestures: swipe to scroll, tap for START. See `watch/source/Layout.mc`.
+Checked in the simulator on the Instinct 3, Venu 3 (454 px AMOLED) and
+Venu Sq 2 (rectangular); only the Instinct 3 has been used on a real watch.

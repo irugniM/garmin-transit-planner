@@ -4,21 +4,41 @@ import Toybox.Math;
 import Toybox.System;
 import Toybox.WatchUi;
 
-// Text layout for the Instinct 3: every row stays inside the round lens
-// (circle chord minus a 3 px margin) and clear of the subscreen ring in the
-// top-right corner. Same approach as the WalkFeed app's Layout.mc.
+// Text layout for any watch: every row stays inside the round lens (circle
+// chord minus a small margin) and clear of the top-right circle: the
+// Instinct's subscreen, or on other watches a virtual circle of the same
+// role that holds the arrow. Positions were tuned on the Instinct's 176 px
+// screen and scale with the screen height (s()).
 module Layout {
-    // On the real watch the subscreen ring reaches below the box that
+    // On the Instinct the subscreen ring reaches below the box that
     // getSubscreen() reports, and its left edge sits inside the box's x.
+    // In 176 px units; scaled with s().
     const RING = 6;
     const HGAP = 12;
     const EDGE = 3;
 
+    // A position or size given for the 176 px Instinct, scaled to this screen.
+    function s(dc as Graphics.Dc, v as Number) as Number {
+        return v * dc.getHeight() / 176;
+    }
+
+    function sz(v as Number) as Number {
+        return v * System.getDeviceSettings().screenHeight / 176;
+    }
+
+    // App name for the top row; the short form when space is tight.
+    function title(dc as Graphics.Dc, font) as Void {
+        drawLeft(dc, s(dc, 18), font, ["Transit Planner", "Transit"]);
+    }
+
     // [left, right] pixels a text row at y..y+h can use.
     function span(dc as Graphics.Dc, y as Number, h as Number) as Array<Number> {
         var w = dc.getWidth();
-        var left = 2;
-        var right = w - 2;
+        // 2 px on the Instinct (the round lens adds its own margin below);
+        // rectangular screens get a margin that grows with the screen.
+        var m = System.getDeviceSettings().screenShape == System.SCREEN_SHAPE_RECTANGLE ? s(dc, 6) : 2;
+        var left = m;
+        var right = w - m;
         if (System.getDeviceSettings().screenShape != System.SCREEN_SHAPE_RECTANGLE) {
             var r = w / 2.0;
             var cy = dc.getHeight() / 2.0;
@@ -41,28 +61,39 @@ module Layout {
             }
         }
         var b = subscreen();
-        if (b != null and b.x > w / 2 and y < b.y + b.height + RING and y + h > b.y) {
-            if (b.x - HGAP < right) {
-                right = b.x - HGAP;
+        if (b != null and b.x > w / 2 and y < b.y + b.height + sz(RING) and y + h > b.y) {
+            if (b.x - sz(HGAP) < right) {
+                right = b.x - sz(HGAP);
             }
         }
         return [left, right];
     }
 
+    // The top-right circle's box: the Instinct subscreen, or elsewhere a
+    // virtual one (about a fifth of the screen wide, inside the round edge)
+    // so every watch keeps the same layout and has room for the arrow.
     function subscreen() {
         if (WatchUi has :getSubscreen) {
-            return WatchUi.getSubscreen();
+            var b = WatchUi.getSubscreen();
+            if (b != null) {
+                return b;
+            }
         }
-        return null;
+        var ds = System.getDeviceSettings();
+        var w = ds.screenWidth;
+        var d = w * 22 / 100;
+        return new Box(w * 62 / 100, ds.screenHeight * 10 / 100, d, d);
     }
 
-    // First y where a full-width row clears the subscreen ring.
+    // True on watches with a real subscreen (the Instinct family).
+    function realSub() as Boolean {
+        return (WatchUi has :getSubscreen) && WatchUi.getSubscreen() != null;
+    }
+
+    // First y where a full-width row clears the top-right circle.
     function bodyTop() as Number {
         var b = subscreen();
-        if (b != null) {
-            return b.y + b.height + RING;
-        }
-        return 4;
+        return b.y + b.height + sz(RING);
     }
 
     function str(text) as String {
@@ -133,7 +164,7 @@ module Layout {
     // current (lower, narrower) row is short; it waits for the next scroll.
     function flow(dc as Graphics.Dc, y0 as Number, font, pitch as Number, lines as Array, center as Boolean, indent as Number) as Boolean {
         var h = dc.getFontHeight(font);
-        var full = dc.getWidth() - 2 * EDGE - indent;
+        var full = dc.getWidth() - 2 * s(dc, EDGE) - indent;
         var y = y0;
         for (var i = 0; i < lines.size(); i += 1) {
             var rest = str(lines[i]);
@@ -208,12 +239,29 @@ module Layout {
     // Small up/down markers for scrollable lists.
     function arrowDown(dc as Graphics.Dc) as Void {
         var cx = dc.getWidth() / 2;
-        var y = dc.getHeight() - 7;
-        dc.fillPolygon([[cx - 5, y - 4], [cx + 5, y - 4], [cx, y + 1]]);
+        var y = dc.getHeight() - s(dc, 7);
+        var a = s(dc, 5);
+        dc.fillPolygon([[cx - a, y - a * 4 / 5], [cx + a, y - a * 4 / 5], [cx, y + a / 5]]);
     }
 
     function arrowUp(dc as Graphics.Dc, y as Number) as Void {
-        var cx = dc.getWidth() / 2 - 20;
-        dc.fillPolygon([[cx - 5, y + 1], [cx + 5, y + 1], [cx, y - 4]]);
+        var cx = dc.getWidth() / 2 - s(dc, 20);
+        var a = s(dc, 5);
+        dc.fillPolygon([[cx - a, y + a / 5], [cx + a, y + a / 5], [cx, y - a * 4 / 5]]);
+    }
+}
+
+// Same fields as the Instinct's subscreen box, for the virtual circle.
+class Box {
+    var x as Number;
+    var y as Number;
+    var width as Number;
+    var height as Number;
+
+    function initialize(x0 as Number, y0 as Number, w as Number, h as Number) {
+        x = x0;
+        y = y0;
+        width = w;
+        height = h;
     }
 }
