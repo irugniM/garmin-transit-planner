@@ -2,20 +2,45 @@
 // small text reply the watch draws, and join LTC GTFS-RT stop alerts.
 // No I/O here, so everything is unit-testable with saved fixtures.
 
+// Default time zone (London, ON). Trips elsewhere use the zone Transitous
+// gives for the trip's places (see trimPlan).
 export const TZ = 'America/Toronto';
 export const MAX_LINE = 18;
 export const MAX_ALERT = 36;
 export const STOP_PREFIX = 'ca-on-London-Transit_';
 
-const hhmmFmt = new Intl.DateTimeFormat('en-CA', {
-  timeZone: TZ,
-  hour: '2-digit',
-  minute: '2-digit',
-  hourCycle: 'h23',
-});
+const fmts = new Map();
+function fmtFor(tz) {
+  let f = fmts.get(tz);
+  if (!f) {
+    f = new Intl.DateTimeFormat('en-CA', { timeZone: tz, hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    fmts.set(tz, f);
+  }
+  return f;
+}
+
+// Zone used by hhmm(). Set only for the length of one synchronous trimPlan()
+// call, so concurrent requests in the same isolate can't mix zones.
+let curTz = TZ;
 
 export function hhmm(unixSecs) {
-  return hhmmFmt.format(new Date(unixSecs * 1000));
+  return fmtFor(curTz).format(new Date(unixSecs * 1000));
+}
+
+// The IANA zone of a Transitous reply (its origin, else the first leg), or
+// TZ when it has none or an unknown one.
+export function tripTz(tq) {
+  const cands = [tq?.from?.tz, tq?.itineraries?.[0]?.legs?.[0]?.from?.tz, tq?.direct?.[0]?.legs?.[0]?.from?.tz];
+  for (const tz of cands) {
+    if (typeof tz !== 'string' || !tz) continue;
+    try {
+      fmtFor(tz);
+      return tz;
+    } catch (_) {
+      // unknown zone name: try the next one
+    }
+  }
+  return TZ;
 }
 
 export function toSecs(iso) {
@@ -567,7 +592,17 @@ export function ptsFor(chosen, to) {
 // Optional lines go above `maxBytes`; still over `hardMax`: "Trip too long".
 // `t` is the query time (depart: leave at, arrive: arrive by).
 // `to` is the destination { lat, lon } (for `pts`).
-export function trimPlan(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY, hardMax = HARD_MAX, to = null } = {}) {
+export function trimPlan(tq, opts = {}) {
+  const prev = curTz;
+  curTz = tripTz(tq);
+  try {
+    return trimPlanIn(tq, opts);
+  } finally {
+    curTz = prev;
+  }
+}
+
+function trimPlanIn(tq, { mode = 'depart', t, alerts = null, maxBytes = MAX_REPLY, hardMax = HARD_MAX, to = null } = {}) {
   const its = Array.isArray(tq?.itineraries) ? tq.itineraries : [];
   const { chosen, other } = chooseItinerary(its, mode, t);
   const walk = bestWalk(tq);

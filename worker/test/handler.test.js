@@ -62,7 +62,7 @@ test('plan to school: Transitous query and trimmed reply', async () => {
   assert.equal(u.searchParams.get('maxPreTransitTime'), '1800');
   assert.equal(u.searchParams.get('maxPostTransitTime'), null);
   assert.equal(tq.init.headers['User-Agent'], USER_AGENT);
-  assert.equal(USER_AGENT, 'LTCTrip/0.1 (+https://github.com/irugniM)');
+  assert.equal(USER_AGENT, 'TransitPlanner/0.2 (+https://github.com/irugniM/garmin-transit-planner)');
 });
 
 test('plan home uses HOME_LATLON and arrive-by', async () => {
@@ -414,4 +414,34 @@ test('geocode calls fetch without a `this` (workerd rejects one)', async () => {
   const r = await post('/v1/geocode', { k: 'test-token', q: 'Masonville Place' }, { fetchImpl: f });
   assert.equal(r.body.ok, true);
   assert.equal(self, undefined);
+});
+
+test('POST geocode near the watch: biased to its position, far matches ignored', async () => {
+  const f = geoFetch([
+    { type: 'PLACE', name: 'Granville St, Toronto', lat: 43.65, lon: -79.38 },
+    { type: 'PLACE', name: 'UBC Bus Loop', lat: 49.267, lon: -123.247 },
+  ]);
+  const r = await post('/v1/geocode', { k: 'test-token', q: 'UBC Bus Loop', lat: '49.28270', lon: '-123.12070' }, { fetchImpl: f });
+  assert.deepEqual(r.body, { v: 1, ok: true, lat: 49.267, lon: -123.247, n: 'UBC Bus Loop' });
+  const u = new URL(f.calls[0].url);
+  assert.equal(u.searchParams.get('place'), '49.2827,-123.1207');
+});
+
+test('plan outside London: no LTC alert fetch, times in the trip zone', async () => {
+  // The Masonville fixture moved to Vancouver's zone: same instants, times 3 h earlier.
+  const tq = JSON.parse(fx('masonville_to_school_0800'));
+  tq.from = { ...(tq.from || {}), tz: 'America/Vancouver' };
+  const calls = [];
+  const f = async (url) => {
+    calls.push(String(url));
+    return new Response(JSON.stringify(tq), { status: 200 });
+  };
+  const r = await post('/v1/plan', { k: 'test-token', lat: '49.28270', lon: '-123.12070', tlat: '49.26700', tlon: '-123.24700' }, { fetchImpl: f });
+  assert.equal(r.body.ok, true);
+  assert.ok(!calls.includes(ALERTS_URL), 'LTC feed not asked');
+  assert.equal(r.body.alert, null);
+  const london = await call(`${BASE}&dest=school`, { env: ENV_AWAY });
+  const hm = (lines) => lines.find((l) => l.startsWith('Arrive ')).slice(7);
+  const mins = (t) => Number(t.slice(0, 2)) * 60 + Number(t.slice(3));
+  assert.equal((mins(hm(london.body.lines)) - mins(hm(r.body.lines)) + 1440) % 1440, 180);
 });

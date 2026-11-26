@@ -1,11 +1,11 @@
 {
-  "name": "ltctrip-worker",
-  "version": "0.1.0",
+  "name": "transit-planner-worker",
+  "version": "0.2.0",
   "private": true,
   "type": "module",
   "license": "MIT",
   "scripts": {
-    "test": "node --test test/",
+    "test": "node --test test/handler.test.js test/plan.test.js",
     "dev": "wrangler dev --local",
     "deploy": "wrangler deploy",
     "fixtures": "node scripts/capture-fixtures.mjs"

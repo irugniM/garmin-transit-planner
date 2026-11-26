@@ -1,10 +1,11 @@
-// LTCTrip Worker logic: GET /v1/plan and GET /v1/ping. See ../../README.md.
+// Transit Planner Worker logic: GET /v1/plan and GET /v1/ping. See ../../README.md.
 // The Worker entry (index.js) may only export handlers, so the testable
 // pieces live here.
 import { clip, compactAlerts, errorReply, hereReply, metres, nearHomePlan, trimPlan, HERE_M, NEAR_HOME_M, NEAR_SHIFT } from './plan.js';
 
-export const VERSION = '0.1';
-export const USER_AGENT = `LTCTrip/${VERSION} (+https://github.com/irugniM)`;
+export const VERSION = '0.2';
+// Transitous asks for the app name, version and a contact in every request.
+export const USER_AGENT = `TransitPlanner/${VERSION} (+https://github.com/irugniM/garmin-transit-planner)`;
 export const TRANSITOUS = 'https://api.transitous.org/api/v5/plan';
 export const GEOCODE = 'https://api.transitous.org/api/v1/geocode';
 // HTTPS on this host is broken; plain http is the only working option.
@@ -138,20 +139,35 @@ export function placesReply(env) {
   return { v: 1, ok: true, places: parsePlaces(env.PLACES).map(({ id, n }) => ({ id, n })) };
 }
 
-// Geocoding (POST /v1/geocode): Transitous's geocoder, biased to London and
-// limited to matches within GEO_RADIUS_M of it. The address text has to go
-// to Transitous; nothing is stored or logged here.
+// Geocoding (POST /v1/geocode): Transitous's geocoder. When the watch sends
+// where it is (`lat`, `lon`), matches are biased to there and limited to
+// GEO_RADIUS_M of it, so any city works; without a position, the best match
+// anywhere. The address text has to go to Transitous; nothing is stored or
+// logged here.
 export const LONDON = { lat: 42.9849, lon: -81.2453 };
 export const GEO_RADIUS_M = 150000;
 export const MAX_ADDRESS = 200;
+// LTC alerts only matter for trips that start or end this close to London.
+export const LTC_RADIUS_M = 60000;
 
-export async function geocode(q, deps) {
+// Where to search for an address: the watch's position when it sends one,
+// otherwise London (what watch builds before 0.2 expect).
+export function nearFrom(params) {
+  const lat = num(params.get('lat'));
+  const lon = num(params.get('lon'));
+  if (Number.isFinite(lat) && Number.isFinite(lon) && Math.abs(lat) <= 90 && Math.abs(lon) <= 180) return { lat, lon };
+  return LONDON;
+}
+
+export async function geocode(q, deps, near = LONDON) {
   const text = typeof q === 'string' ? q.replace(/\s+/g, ' ').trim() : '';
   if (text.length < 3 || text.length > MAX_ADDRESS) return errorReply('Bad address');
   const u = new URL(GEOCODE);
   u.searchParams.set('text', text);
-  u.searchParams.set('place', `${LONDON.lat},${LONDON.lon}`);
-  u.searchParams.set('placeBias', '5');
+  if (near) {
+    u.searchParams.set('place', `${near.lat},${near.lon}`);
+    u.searchParams.set('placeBias', '5');
+  }
   u.searchParams.set('numResults', '5');
   u.searchParams.set('language', 'en');
   // Plain call: workerd's fetch rejects a `this` (deps.fetchImpl(...)).
@@ -168,7 +184,7 @@ export async function geocode(q, deps) {
     return errorReply('Transitous down');
   }
   const hit = (Array.isArray(list) ? list : []).find((m) => m && Number.isFinite(Number(m.lat)) && Number.isFinite(Number(m.lon)) &&
-    m.lat !== null && m.lon !== null && metres(LONDON, { lat: Number(m.lat), lon: Number(m.lon) }) <= GEO_RADIUS_M);
+    m.lat !== null && m.lon !== null && (!near || metres(near, { lat: Number(m.lat), lon: Number(m.lon) }) <= GEO_RADIUS_M));
   if (!hit) return errorReply('Address not found');
   const r5 = (x) => Math.round(Number(x) * 1e5) / 1e5;
   return { v: 1, ok: true, lat: r5(hit.lat), lon: r5(hit.lon), n: clip(String(hit.name || ''), MAX_NAME) };
@@ -233,7 +249,9 @@ export async function planTrip(params, env, deps, { post = false } = {}) {
   u.searchParams.set('maxDirectTime', String(MAX_DIRECT_WALK));
   u.searchParams.set('maxPreTransitTime', String(MAX_FIRST_WALK));
 
-  const alertsP = loadAlerts(deps);
+  // LTC's feed only covers London, ON: skip it for trips elsewhere.
+  const inLondon = metres({ lat, lon }, LONDON) <= LTC_RADIUS_M || metres(to, LONDON) <= LTC_RADIUS_M;
+  const alertsP = inLondon ? loadAlerts(deps) : Promise.resolve(null);
   let tq;
   try {
     const r = await fetchImpl(u.toString(), {
@@ -302,6 +320,6 @@ export async function handle(request, env, deps) {
   if (!env.TOKEN) return json(errorReply('Token not set'));
   if (!sameToken(body.get('k') || '', env.TOKEN)) return json(errorReply('Bad token'));
   if (path === '/v1/plan') return json(await planTrip(body, env, deps, { post: true }));
-  if (path === '/v1/geocode') return json(await geocode(body.get('q'), deps));
+  if (path === '/v1/geocode') return json(await geocode(body.get('q'), deps, nearFrom(body)));
   return json(placesReply(env));
 }
